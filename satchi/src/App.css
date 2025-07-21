@@ -1,0 +1,237 @@
+/* General Body Styles */
+body {
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; /* A more modern sans-serif font stack */
+  margin: 0;
+  padding: 0;
+  background-color: #e0f2f7; /* Light blue background */
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh; /* Full viewport height */
+  color: #333; /* Dark gray for general text */
+  line-height: 1.6;
+}
+
+/* Main Container for the Form */
+.container {
+  background-color: #ffffff;
+  padding: 40px;
+  border-radius: 12px; /* Slightly more rounded corners */
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15); /* More prominent shadow */
+  width: 100%;
+  max-width: 650px; /* Slightly wider form */
+  box-sizing: border-box; /* Ensures padding and border are included in the element's total width and height */
+  border: 1px solid #cceeff; /* Light blue border */
+}
+
+/* Heading Style */
+h1 {
+  text-align: center;
+  color: #007bff; /* Primary blue for heading */
+  margin-bottom: 35px;
+  font-size: 2.8em; /* Larger heading */
+  font-weight: 700; /* Bolder */
+  letter-spacing: -0.5px;
+}
+
+/* Form Group (Label + Input/Textarea) */
+.form-group {
+  margin-bottom: 25px; /* More space between groups */
+}
+
+.form-group label {
+  display: block;
+  margin-bottom: 10px; /* More space between label and input */
+  font-weight: 600; /* Semi-bold label */
+  color: #444; /* Darker gray for labels */
+  font-size: 1.1em;
+}
+
+.form-group label span {
+  color: #dc3545; /* Red for required indicator */
+  font-weight: bold;
+}
+
+/* Input and Textarea Base Styles */
+.form-group input[type="text"],
+.form-group input[type="tel"],
+.form-group input[type="email"],
+.form-group textarea {
+  width: 100%;
+  padding: 14px 15px; /* More padding */
+  border: 1px solid #c0d9ec; /* Lighter, subtle border */
+  border-radius: 8px; /* Rounded input fields */
+  font-size: 1em;
+  box-sizing: border-box;
+  transition: border-color 0.3s ease, box-shadow 0.3s ease; /* Smooth transition for focus */
+}
+
+.form-group textarea {
+  resize: vertical; /* Allow vertical resizing for textareas */
+  min-height: 100px; /* Minimum height for textarea */
+}
+
+/* Input/Textarea Focus Styles */
+.form-group input:focus,
+.form-group textarea:focus {
+  border-color: #007bff; /* Primary blue on focus */
+  outline: none; /* Remove default outline */
+  box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.25); /* Subtle glowing effect */
+}
+
+/* Team Members List Styling */
+.team-members-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px; /* Space between team member inputs */
+  margin-bottom: 15px;
+}
+
+.team-members-list .team-member-input {
+  display: flex;
+  align-items: center;
+  gap: 10px; /* Space between input and remove button */
+}
+
+/* Remove Button for Team Members */
+.remove-button {
+  background-color: #dc3545; /* Red */
+  color: white;
+  border: none;
+  padding: 8px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.9em;
+  font-weight: 500;
+  transition: background-color 0.2s ease, transform 0.2s ease;
+  flex-shrink: 0; /* Prevent button from shrinking */
+}
+
+.remove-button:hover {
+  background-color: #c82333; /* Darker red on hover */
+  transform: translateY(-1px); /* Slight lift effect */
+}
+
+.remove-button:active {
+  transform: translateY(0);
+}
+
+/* Add Member Button */
+.add-member-button {
+  background-color: #28a745; /* Green */
+  color: white;
+  border: none;
+  padding: 10px 18px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 1em;
+  font-weight: 600;
+  transition: background-color 0.2s ease, transform 0.2s ease;
+  margin-top: 10px; /* Space above button */
+  display: inline-block; /* Allow padding and margin to work correctly */
+}
+
+.add-member-button:hover {
+  background-color: #218838; /* Darker green on hover */
+  transform: translateY(-1px);
+}
+
+.add-member-button:active {
+  transform: translateY(0);
+}
+
+/* Submission Status Messages */
+.submission-status {
+  padding: 15px;
+  border-radius: 8px;
+  text-align: center;
+  margin-top: 25px;
+  font-weight: 600;
+  font-size: 1.05em;
+  border: 1px solid transparent; /* Base border for consistency */
+}
+
+.submission-status.success {
+  background-color: #d4edda; /* Light green */
+  color: #155724; /* Dark green text */
+  border-color: #c3e6cb; /* Green border */
+}
+
+.submission-status.error {
+  background-color: #f8d7da; /* Light red */
+  color: #721c24; /* Dark red text */
+  border-color: #f5c6cb; /* Red border */
+}
+
+/* Submit Button */
+.submit-button {
+  width: 100%;
+  padding: 16px;
+  background-color: #007bff; /* Primary blue */
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 1.3em;
+  font-weight: bold;
+  cursor: pointer;
+  transition: background-color 0.3s ease, transform 0.2s ease, box-shadow 0.3s ease;
+  margin-top: 30px; /* More space above button */
+  box-shadow: 0 4px 10px rgba(0, 123, 255, 0.2); /* Subtle shadow */
+}
+
+.submit-button:hover {
+  background-color: #0056b3; /* Darker blue on hover */
+  transform: translateY(-2px); /* Lift effect */
+  box-shadow: 0 6px 15px rgba(0, 123, 255, 0.3); /* Enhanced shadow on hover */
+}
+
+.submit-button:active {
+  transform: translateY(0); /* Press down effect */
+  box-shadow: 0 2px 5px rgba(0, 123, 255, 0.2);
+}
+
+/* Basic responsiveness for smaller screens */
+@media (max-width: 768px) {
+  .container {
+    padding: 25px;
+    margin: 20px;
+  }
+
+  h1 {
+    font-size: 2em;
+    margin-bottom: 25px;
+  }
+
+  .form-group label {
+    font-size: 1em;
+  }
+
+  .form-group input,
+  .form-group textarea,
+  .submit-button {
+    font-size: 0.95em;
+    padding: 12px;
+  }
+
+  .submit-button {
+    padding: 14px;
+  }
+}
+
+@media (max-width: 480px) {
+  .container {
+    padding: 15px;
+    margin: 10px;
+  }
+
+  h1 {
+    font-size: 1.8em;
+    margin-bottom: 20px;
+  }
+
+  .remove-button,
+  .add-member-button {
+    padding: 8px 10px;
+    font-size: 0.85em;
+  }
+}
