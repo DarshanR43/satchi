@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en" class="dark scroll-smooth">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#0B0F1A" />
+  <!-- <link rel="icon" href="%PUBLIC_URL%/favicon.ico" /> -->
+  <!-- <link rel="icon" type="image/svg+xml" href="/public/images/logo.png" /> -->
+  <title>Satchi</title>
+
+  <style>
+    body {
+      margin: 0;
+      background: #000;
+      font-family: 'Orbitron', sans-serif;
+      color: white;
+    }
+
+    #preloader {
+      position: fixed;
+      inset: 0;
+      z-index: 9999;
+      background: #000;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .typewriter {
+      overflow: hidden;
+      white-space: nowrap;
+      border-right: 2px solid #FFAB00;
+      animation: typing 1s steps(20, end) forwards, blink 0.2s step-end infinite;
+      width: 0;
+      color: #FFAB00;
+      font-size: 1.5rem;
+      letter-spacing: 2px;
+    }
+
+    @keyframes typing {
+      from {
+        width: 0
+      }
+
+      to {
+        width: 180px
+      }
+    }
+
+    @keyframes blink {
+      50% {
+        border-color: transparent
+      }
+    }
+
+    @keyframes fadeIn {
+      to {
+        opacity: 1
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <div id="preloader">
+    <div class="typewriter">Awakening...</div>
+  </div>
+
+  <div id="root"></div>
+
+  <script type="module" src="/src/main.jsx"></script>
+  <script>
+    window.addEventListener("DOMContentLoaded", () => {
+      const preloader = document.getElementById("preloader");
+      if (preloader) {
+        preloader.style.opacity = "0";
+        preloader.style.transition = "opacity 0.5s ease";
+        setTimeout(() => preloader.remove(), 500);
+      }
+    });
+  </script>
+</body>
+
+</html>
