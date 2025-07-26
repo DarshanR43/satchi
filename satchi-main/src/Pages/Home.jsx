@@ -1,14 +1,15 @@
 import React from "react";
 import HeroSection from "../Components/HeroSection";
 import AboutUsSection from "../Components/AboutUsSection";
-import ContactUs from "../Components/ContactUs";
-
+import RegistrationForm from "../Components/RegistrationForm";
+// import Login from "./Login";
 const Home = () => {
   return (
     <>
       <HeroSection />
       <AboutUsSection />
-      <ContactUs />
+      {/* <RegistrationForm /> */}
+      {/* <Login/> */}
     </>
   );
 };

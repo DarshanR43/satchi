@@ -25,10 +25,10 @@ const Footer = () => {
         <div>
           <h4 className="text-lg font-semibold mb-4 text-accent">Quick Links</h4>
           <ul className="space-y-2 text-textLight">
-            <li><a href="#hero" className="hover:text-accent">Home</a></li>
+            <li><a href="/" className="hover:text-accent">Home</a></li>
             <li><a href="#about" className="hover:text-accent">Rules</a></li>
             {/* <li><a href="#services" className="hover:text-accent">Services</a></li> */}
-            <li><a href="#contact" className="hover:text-accent">Register</a></li>
+            <li><a href="register" className="hover:text-accent">Register</a></li>
           </ul>
         </div>
 
@@ -86,7 +86,7 @@ const Footer = () => {
       <div className="w-full flex flex-col items-center justify-center px-6 pb-8">
         <div className="bg-white/10 border border-white/10 backdrop-blur-md rounded-full px-6 py-3 flex flex-col sm:flex-row items-center justify-between gap-3 text-sm text-white transition hover:shadow-[0_0_16px_rgba(0,209,255,0.15)]">
           <span className="font-medium text-center whitespace-nowrap">
-            Made by <span className="text-accent">Darshan, Shantharam</span>
+            Developed by <span className="text-accent">Darshan, Shantharam</span>
           </span>
         </div>
       </div>

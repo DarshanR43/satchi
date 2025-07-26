@@ -5,8 +5,9 @@ import { FaBars, FaTimes, FaChevronDown, FaFileAlt } from "react-icons/fa";
 
 const menuItems = [
   { label: "Home", path: "/" },
-  {label: "About", scrollTo: "/AboutUsSection"},
-  { label: "Registration", scrollTo: "/contact" }
+  {label: "About", path: "/AboutUsSection"},
+  {label: "Registration", path: "/register" },
+  {label: "Login", path: "/login"},
 ];
 
 const Header = () => {
@@ -23,10 +24,8 @@ const Header = () => {
     const hero = document.getElementById("hero");
 
     if (location.pathname !== "/") {
-      // Always show header on non-home pages
       setShowHeader(true);
     } else if (hero) {
-      // Only show when hero is scrolled past on home
       const rect = hero.getBoundingClientRect();
       setShowHeader(rect.bottom <= 50);
     }
@@ -40,16 +39,16 @@ const Header = () => {
 
 
   // Desktop dropdown hover/click logic
-  const handleMouseEnter = (i) => {
-    clearTimeout(dropdownTimeout.current);
-    setActiveDropdown(i);
-  };
-  const handleMouseLeave = () => {
-    dropdownTimeout.current = setTimeout(() => {
-      setActiveDropdown(null);
-      setActiveSubDropdown(null);
-    }, 120);
-  };
+  // const handleMouseEnter = (i) => {
+  //   clearTimeout(dropdownTimeout.current);
+  //   setActiveDropdown(i);
+  // };
+  // const handleMouseLeave = () => {
+  //   dropdownTimeout.current = setTimeout(() => {
+  //     setActiveDropdown(null);
+  //     setActiveSubDropdown(null);
+  //   }, 120);
+  // };
 
   // For mobile, toggles
   const handleDropdownToggle = (idx) => {
@@ -61,23 +60,23 @@ const Header = () => {
   };
 
   // Scroll-to-section handler for dropdown items
-  const handleScrollNavigate = (sectionId) => {
-    if (location.pathname === "/") {
-      // Already on homepage, just scroll
-      const el = document.getElementById(sectionId);
-      if (el) el.scrollIntoView({ behavior: "smooth" });
-    } else {
-      // Go to homepage and pass section to scroll to
-      navigate("/", { state: { scrollTo: sectionId } });
-    }
-    setActiveDropdown(null);
-    setActiveSubDropdown(null);
-    setMobileOpen(false);
-  };
+  // const handleScrollNavigate = (sectionId) => {
+  //   if (location.pathname === "/") {
+  //     // Already on homepage, just scroll
+  //     const el = document.getElementById(sectionId);
+  //     if (el) el.scrollIntoView({ behavior: "smooth" });
+  //   } else {
+  //     // Go to homepage and pass section to scroll to
+  //     navigate("/", { state: { scrollTo: sectionId } });
+  //   }
+  //   setActiveDropdown(null);
+  //   setActiveSubDropdown(null);
+  //   setMobileOpen(false);
+  // };
 
-  const isActiveLink = (path) =>
-    location.pathname === path ||
-    (path !== "/" && location.pathname.startsWith(path));
+  // const isActiveLink = (path) =>
+  //   location.pathname === path ||
+  //   (path !== "/" && location.pathname.startsWith(path));
 
   return (
     <AnimatePresence>

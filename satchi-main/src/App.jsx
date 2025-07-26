@@ -1,30 +1,12 @@
 import React, { useEffect, useState } from "react";
 import { BrowserRouter as Router, Routes, Route, useLocation } from "react-router-dom";
-import { scroller } from "react-scroll";
 
 import Header from "./Components/Header";
 import Footer from "./Components/Footer";
 import Home from "./Pages/Home";
-
-const ScrollToSection = () => {
-  const location = useLocation();
-
-  useEffect(() => {
-    if (location.state?.scrollTo) {
-      setTimeout(() => {
-        scroller.scrollTo(location.state.scrollTo, {
-          smooth: true,
-          duration: 500,
-          offset: -80,
-        });
-      }, 100);
-    }
-  }, [location]);
-
-  return null;
-};
-
-
+import Login from "./Pages/Login";
+import Registration from "./Pages/Registration";
+import About from "./Components/AboutUsSection"
 
 const App = () => {
   const [loading, setLoading] = useState(true);
@@ -46,10 +28,14 @@ const App = () => {
     <div className="min-h-screen bg-black text-white font-body">
       <Router>
         <Header />
-        <ScrollToSection />
         <main className="max-w-[100%] mx-auto pb-12">
           <Routes>
             <Route path="/" element={<Home />} />
+            {/* <Route path="login" element = {<Login/>} /> */}
+            <Route path="about" element = {<About/>} />
+            <Route path="login" element = {<Login/>} />
+            <Route path="register" element = {<Registration/>} />
+
           </Routes>
         </main>
         <Footer />

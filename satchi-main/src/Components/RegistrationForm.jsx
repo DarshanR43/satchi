@@ -1,4 +1,4 @@
-import React, { useRef, useState } from "react";
+import React, { useState } from "react";
 import { motion } from "framer-motion";
 
 function getCookie(name) {
@@ -18,7 +18,7 @@ function getCookie(name) {
 
 
 
-const ContactUs = () => {
+const RegistrationForm = () => {
 
   const [captainName, setCaptainName] = useState('');
     const [teamMembers, setTeamMembers] = useState(['', '']); // Initially two empty fields
@@ -118,7 +118,6 @@ const ContactUs = () => {
       <div className="w-auto">
         {/* Contact Form */}
         <motion.form
-          // ref={formRef}
           onSubmit={handleSubmit}
 
           initial={{ opacity: 0, x: 30 }}
@@ -132,36 +131,25 @@ const ContactUs = () => {
               id="LeaderName"
               value={captainName}
               onChange={(e) => setCaptainName(e.target.value)}
-              placeholder="Enter Leader full name"
+              placeholder="POC full name"
               required
-              className="w-96 px-4 py-2 rounded-md bg-black/20 text-white border border-white/10 focus:outline-none mb-4 mr-0"
+              className="w-[50%] px-4 py-2 rounded-md bg-black/20 text-white border border-white/10 focus:outline-none mb-4 mr-0"
             />
           <div className="mb-4">
             <label className="block mb-2 font-semibold text-gray-700 text-lg
                               md:text-base">
               Team Members' Names
             </label>
-            <div className="flex flex-col gap-1 mb-1">
+            <div className="flex flex-row flex-wrap -mx-2 mb-2">
               {teamMembers.map((member, index) => (
-                <div key={index} className="flex items-center gap-2">
+                <div key={index} className="w-full sm:w-1/2 px-2">
                   <input
                     type="text"
                     value={member}
                     onChange={(e) => handleTeamMemberChange(index, e.target.value)}
                     placeholder={`Team Member ${index + 1}`}
-                    className="w-[48%] px-4 py-2 rounded-md bg-black/20 text-white border border-white/10 focus:outline-none mb-4 mr-0"
+                    className="w-full px-4 py-2 rounded-md bg-black/20 text-white border border-white/10 focus:outline-none mb-4 mr-0"
                   />
-                  {teamMembers.length > 2 && (
-                    <button
-                      type="button"
-                      onClick={() => removeTeamMember(index)}
-                      className="bg-red-600 text-white px-3 py-2 rounded-md cursor-pointer text-sm font-medium transition-all duration-200 ease-in-out flex-shrink-0
-                                 hover:bg-red-700 hover:translate-y-px active:translate-y-0"
-                      aria-label={`Remove team member ${index + 1}`}
-                    >
-                      Remove
-                    </button>
-                  )}
                 </div>
               ))}
             </div>
@@ -172,6 +160,17 @@ const ContactUs = () => {
             >
               Add More Team Members
             </button>
+            {teamMembers.length > 2 && (
+              <button
+                type="button"
+                onClick={() => removeTeamMember(teamMembers.length - 1)}
+                className="ml-4 bg-red-600 text-white px-3 py-2 rounded-md cursor-pointer text-sm font-medium transition-all duration-200 ease-in-out flex-shrink-0
+                hover:bg-red-700 hover:translate-y-px active:translate-y-0"
+                aria-label="Remove last team member"
+              >
+                Remove Last Member
+              </button>
+            )}
           </div>
           <div className="flex justify-between items-center mb-4">
 
@@ -227,4 +226,4 @@ const ContactUs = () => {
   );
 };
 
-export default ContactUs;
+export default RegistrationForm;
