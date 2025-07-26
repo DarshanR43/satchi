@@ -7,6 +7,7 @@ import Home from "./Pages/Home";
 import Login from "./Pages/Login";
 import Registration from "./Pages/Registration";
 import About from "./Components/AboutUsSection"
+import Events from "./Pages/Events";
 
 const App = () => {
   const [loading, setLoading] = useState(true);
@@ -31,7 +32,7 @@ const App = () => {
         <main className="max-w-[100%] mx-auto pb-12">
           <Routes>
             <Route path="/" element={<Home />} />
-            {/* <Route path="login" element = {<Login/>} /> */}
+            <Route path="events" element = {<Events/>} />
             <Route path="about" element = {<About/>} />
             <Route path="login" element = {<Login/>} />
             <Route path="register" element = {<Registration/>} />

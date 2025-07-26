@@ -6,7 +6,7 @@ import { FaBars, FaTimes, FaChevronDown, FaFileAlt } from "react-icons/fa";
 const menuItems = [
   { label: "Home", path: "/" },
   {label: "About", path: "/AboutUsSection"},
-  {label: "Registration", path: "/register" },
+  {label: "Events", path: "/events" },
   {label: "Login", path: "/login"},
 ];
 
@@ -17,7 +17,6 @@ const Header = () => {
   const [activeSubDropdown, setActiveSubDropdown] = useState(null);
   const location = useLocation();
   const navigate = useNavigate();
-  const dropdownTimeout = useRef(null);
 
   useEffect(() => {
   const checkHeroVisible = () => {
@@ -37,19 +36,6 @@ const Header = () => {
   return () => window.removeEventListener("scroll", checkHeroVisible);
 }, [location.pathname]);
 
-
-  // Desktop dropdown hover/click logic
-  // const handleMouseEnter = (i) => {
-  //   clearTimeout(dropdownTimeout.current);
-  //   setActiveDropdown(i);
-  // };
-  // const handleMouseLeave = () => {
-  //   dropdownTimeout.current = setTimeout(() => {
-  //     setActiveDropdown(null);
-  //     setActiveSubDropdown(null);
-  //   }, 120);
-  // };
-
   // For mobile, toggles
   const handleDropdownToggle = (idx) => {
     setActiveDropdown(activeDropdown === idx ? null : idx);
@@ -58,25 +44,6 @@ const Header = () => {
   const handleSubDropdownToggle = (idx) => {
     setActiveSubDropdown(activeSubDropdown === idx ? null : idx);
   };
-
-  // Scroll-to-section handler for dropdown items
-  // const handleScrollNavigate = (sectionId) => {
-  //   if (location.pathname === "/") {
-  //     // Already on homepage, just scroll
-  //     const el = document.getElementById(sectionId);
-  //     if (el) el.scrollIntoView({ behavior: "smooth" });
-  //   } else {
-  //     // Go to homepage and pass section to scroll to
-  //     navigate("/", { state: { scrollTo: sectionId } });
-  //   }
-  //   setActiveDropdown(null);
-  //   setActiveSubDropdown(null);
-  //   setMobileOpen(false);
-  // };
-
-  // const isActiveLink = (path) =>
-  //   location.pathname === path ||
-  //   (path !== "/" && location.pathname.startsWith(path));
 
   return (
     <AnimatePresence>
@@ -92,7 +59,7 @@ const Header = () => {
         >
           <div className="flex items-center justify-between w-full">
             {/* Logo */}
-            <img src="/images/techfair_logo.png" alt="Satchi Logo" className="h-8" />
+            <img src="/images/Satchi_main_logo.png" alt="Satchi Logo" className="h-8" />
 
             {/* Desktop Menu */}
             <ul className="hidden lg:flex items-center gap-4 text-sm font-medium">

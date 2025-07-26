@@ -3,15 +3,15 @@ import { motion } from "framer-motion";
 import { NavLink } from "react-router-dom";
 
 
-const planetImages = [
+const bgImages = [
   "bg1.png",
   "bg2.png",
 ];
 
 const HeroSection = () => {
   const selectedImage = useMemo(() => {
-    const randomIndex = Math.floor(Math.random() * planetImages.length);
-    return `/images/planets/${planetImages[randomIndex]}`;
+    const randomIndex = Math.floor(Math.random() * bgImages.length);
+    return `/images/wallpaper/${bgImages[randomIndex]}`;
   }, []);
 
   return (
@@ -58,27 +58,25 @@ const HeroSection = () => {
         >
 
           <NavLink
-            // to="/about"
+            to="/events"
             className="px-7 py-3 rounded-full text-sm sm:text-base font-semibold tracking-wide 
     backdrop-blur-xl bg-white/10 border border-white/20 text-white 
     hover:bg-white/20 hover:scale-105 hover:shadow-[0_0_10px_#FF805A]
     transition duration-300 cursor-pointer"
           >
-            About Us
+            Events
           </NavLink>
 
 
-          <a
-            // href="https://wa.me/918807042760"
-            target="_blank"
-            rel="noopener noreferrer"
+          <NavLink
+            to="/login"
             className="px-7 py-3 rounded-full text-sm sm:text-base font-semibold tracking-wide 
               text-accent border border-accent bg-white/5 backdrop-blur-lg 
               hover:bg-accent hover:text-deepBlue hover:scale-105 
               hover:shadow-[0_0_20px_#FF805A] transition duration-300"
           >
-            Register Now
-          </a>
+            Login
+          </NavLink>
         </motion.div>
       </div>
     </section>
