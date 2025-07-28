@@ -41,18 +41,41 @@ const Login = () => {
   }, [email, password, emailRegex]);
 
 
-  const handleSubmit = (e) => {
-    e.preventDefault();
+const handleSubmit = async (e) => {
+  e.preventDefault();
 
-    if (!isFormValid) {
-        console.error("Attempted to submit with invalid form.");
-        return;
+  if (!isFormValid) {
+    console.error("Attempted to submit with invalid form.");
+    return;
+  }
+
+  try {
+    const response = await fetch("http://localhost:8000/api/login/", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        email: email,
+        password: password,
+      }),
+    });
+
+    if (!response.ok) {
+      throw new Error("Login failed");
     }
 
-    console.log("Login form submitted successfully!");
-    console.log("Email:", email);
-    console.log("Password:", password);
-  };
+    const data = await response.json();
+    console.log("Login successful:", data);
+
+    // e.g., store token or redirect
+    // localStorage.setItem("token", data.token);
+    // navigate("/dashboard");
+
+  } catch (error) {
+    console.error("Error during login:", error);
+  }
+};
 
   return(
     <div className="pt-12 my-40">

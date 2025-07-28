@@ -40,6 +40,7 @@ INSTALLED_APPS = [
     'rest_framework',
     'corsheaders',
     'api',
+    'users',
 ]
 
 MIDDLEWARE = [
@@ -77,18 +78,27 @@ WSGI_APPLICATION = 'backend.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/4.2/ref/settings/#databases
 
+#DATABASES = {
+#    'default': {
+#        'ENGINE': 'django_cockroachdb',
+#        'NAME': 'defaultdb',
+#        'USER': 'shantharam',
+#        'PASSWORD': 'OFI04dw9t3gYZikpTHM-Jg',
+#        'HOST': 'satchi-db-7867.jxf.gcp-us-west2.cockroachlabs.cloud',
+#        'PORT': '26257',
+#        'OPTIONS': {
+#            'sslmode': 'verify-full',
+#            'sslrootcert': 'C:\\Users\\shant\\OneDrive\\Documents\\GitHub\\satchi\\root.crt',
+#        },
+#    }
+#}
+
+# settings.py
+
 DATABASES = {
     'default': {
-        'ENGINE': 'django_cockroachdb',
-        'NAME': 'defaultdb',
-        'USER': 'shantharam',
-        'PASSWORD': 'OFI04dw9t3gYZikpTHM-Jg',
-        'HOST': 'satchi-db-7867.jxf.gcp-us-west2.cockroachlabs.cloud',
-        'PORT': '26257',
-        'OPTIONS': {
-            'sslmode': 'verify-full',
-            'sslrootcert': 'C:\\Users\\shant\\OneDrive\\Documents\\GitHub\\satchi\\root.crt',
-        },
+        'ENGINE': 'django.db.backends.sqlite3',
+        'NAME': BASE_DIR / 'db.sqlite3',
     }
 }
 
@@ -137,3 +147,5 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:5173",
 ]
+
+AUTH_USER_MODEL = 'users.User'  # Replace 'yourapp' with your actual app name
