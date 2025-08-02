@@ -8,6 +8,7 @@ import Login from "./Pages/Login";
 import Registration from "./Pages/Registration";
 import About from "./Components/AboutUsSection"
 import Events from "./Pages/Events";
+import Admin from "./Pages/Admin";
 
 const App = () => {
   const [loading, setLoading] = useState(true);
@@ -33,7 +34,7 @@ const App = () => {
           <Routes>
             <Route path="/" element={<Home />} />
             <Route path="events" element = {<Events/>} />
-            <Route path="about" element = {<About/>} />
+            <Route path="admin" element = {<Admin/>} />
             <Route path="login" element = {<Login/>} />
             <Route path="register" element = {<Registration/>} />
 

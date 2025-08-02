@@ -101,7 +101,7 @@ const handleSubmit = async (e) => {
               onChange={handleEmailChange}
               placeholder="e.g., yourname.amrita.edu"
               required
-              className={`w-full px-4 py-2 rounded-md bg-black/20 text-white border ${emailError ? 'border-red-400' : 'border-white/20'} focus:outline-none focus:ring-2 focus:ring-cyan-500`}
+              className={`w-full px-4 py-2 rounded-md bg-black/20 text-white border ${emailError ? 'border-red-400' : 'border-white/20'} focus:outline-none focus:ring-2 focus:ring-accent`}
             />
             {emailError && <p className="text-red-400 text-sm mt-1">{emailError}</p>}
           </div>
@@ -116,7 +116,7 @@ const handleSubmit = async (e) => {
               onChange={handlePasswordChange}
               placeholder="••••••••"
               required
-              className={`w-full px-4 py-2 rounded-md bg-black/20 text-white border ${passwordError ? 'border-red-400' : 'border-white/20'} focus:outline-none focus:ring-2 focus:ring-cyan-500`}
+              className={`w-full px-4 py-2 rounded-md bg-black/20 text-white border ${passwordError ? 'border-red-400' : 'border-white/20'} focus:outline-none focus:ring-2 focus:ring-accent`}
             />
             {passwordError && <p className="text-red-400 text-sm mt-1">{passwordError}</p>}
           </div>

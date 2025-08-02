@@ -5,7 +5,7 @@ import { FaBars, FaTimes, FaChevronDown, FaFileAlt } from "react-icons/fa";
 
 const menuItems = [
   { label: "Home", path: "/" },
-  {label: "About", path: "/AboutUsSection"},
+  {label: "Admin", path: "/admin"},
   {label: "Events", path: "/events" },
   {label: "Login", path: "/login"},
 ];
