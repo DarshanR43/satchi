@@ -131,7 +131,7 @@ const handleSubmit = async (e) => {
 
           <p className="text-center text-gray-400 mt-4 text-sm">
             Don't have an account?{" "}
-            <Link to="/register" className="font-medium text-[#FF805A] hover:underline">
+            <Link to="/signup" className="font-medium text-[#FF805A] hover:underline">
               Sign Up
             </Link>
           </p>

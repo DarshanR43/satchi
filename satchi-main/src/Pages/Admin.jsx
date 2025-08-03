@@ -205,7 +205,7 @@ const ManageRolesModal = ({ isOpen, onClose, onSave, event, permissions }) => {
 
 
 // --- #################### Main Admin Component #################### ---
-const Events = () => {
+const Adminactions = () => {
   const [events, setEvents] = useState(initialEvents);
   const [currentUserEmail, setCurrentUserEmail] = useState('guest@visitor.com');
   const [expandedEvents, setExpandedEvents] = useState({1: true, 101: true});
@@ -485,4 +485,4 @@ const Events = () => {
   );
 };
 
-export default Events;
+export default Adminactions;

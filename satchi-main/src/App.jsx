@@ -6,7 +6,7 @@ import Footer from "./Components/Footer";
 import Home from "./Pages/Home";
 import Login from "./Pages/Login";
 import Registration from "./Pages/Registration";
-import About from "./Components/AboutUsSection"
+import Signup from "./Pages/Signup"
 import Events from "./Pages/Events";
 import Admin from "./Pages/Admin";
 
@@ -37,6 +37,7 @@ const App = () => {
             <Route path="admin" element = {<Admin/>} />
             <Route path="login" element = {<Login/>} />
             <Route path="register" element = {<Registration/>} />
+            <Route path="signup" element = {<Signup/>} />
 
           </Routes>
         </main>

@@ -8,6 +8,7 @@ const menuItems = [
   {label: "Admin", path: "/admin"},
   {label: "Events", path: "/events" },
   {label: "Login", path: "/login"},
+  
 ];
 
 const Header = () => {
