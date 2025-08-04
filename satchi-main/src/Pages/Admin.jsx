@@ -1,6 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { useNavigate } from 'react-router-dom';
 import { Plus, ChevronDown, Edit, Trash2, X, CheckSquare, Square, AlertTriangle, Users } from 'lucide-react';
 
 // --- Mock User Database ---
@@ -71,7 +70,19 @@ const ConfirmationModal = ({ isOpen, onClose, onConfirm, title, message }) => {
 // --- #################### Add Event Modal Component (Refactored) #################### ---
 const AddEventModal = ({ isOpen, onClose, onSave, allEvents, userPermissions, creationContext = {} }) => {
     const [eventType, setEventType] = useState('sub');
-    const [formData, setFormData] = useState({});
+    
+    // FIX: Initialize all possible form fields to prevent the "uncontrolled to controlled" error.
+    const [formData, setFormData] = useState({
+        parentId: '',
+        subParentId: '',
+        name: '',
+        description: '',
+        rules: '',
+        minMembers: 1,
+        maxMembers: 1,
+        facultyMentor: false,
+        minFemaleMembers: 0,
+    });
 
     const creatableMainEvents = useMemo(() => {
         if (userPermissions.isSuperAdmin) return allEvents;
@@ -89,25 +100,22 @@ const AddEventModal = ({ isOpen, onClose, onSave, allEvents, userPermissions, cr
             const defaultType = userPermissions.creatableEventTypes[0] || 'sub';
             setEventType(defaultType);
             
+            // FIX: When resetting the form, ensure all keys are preserved.
             const baseData = {
-                parentId: creationContext.parentId || '',
-                subParentId: creationContext.subParentId || '',
+                // Reset all fields to default
+                parentId: '',
+                subParentId: '',
                 name: '',
                 description: '',
+                rules: '',
+                minMembers: 1,
+                maxMembers: 1,
+                facultyMentor: false,
+                minFemaleMembers: 0,
+                // Apply context-specific values from creationContext
+                ...creationContext,
             };
-            // Only add detailed fields for sub-sub-events
-            if (defaultType === 'subsub') {
-                setFormData({
-                    ...baseData,
-                    rules: '',
-                    minMembers: 1,
-                    maxMembers: 1,
-                    facultyMentor: false,
-                    minFemaleMembers: 0,
-                });
-            } else {
-                setFormData(baseData);
-            }
+            setFormData(baseData);
         }
     }, [isOpen, creationContext, userPermissions]);
 
@@ -159,45 +167,101 @@ const AddEventModal = ({ isOpen, onClose, onSave, allEvents, userPermissions, cr
     );
 };
 
+// --- Standalone RoleSection Component ---
+// Moved outside the ManageRolesModal to prevent re-rendering issues that cause input focus loss.
+const RoleSection = ({ title, roleType, roles, newEmail, onEmailChange, onAddRole, onRemoveRole }) => (
+    <div className="space-y-2">
+        <h4 className="font-bold text-lg text-white">{title}</h4>
+        <div className="space-y-2 max-h-32 overflow-y-auto pr-2">
+            {roles?.map(email => (
+                // FIX: Changed flex properties to center the email text.
+                <div key={email} className="flex items-center bg-black/30 p-2 rounded-md">
+                    <span className="flex-grow text-center text-sm text-gray-300">{email}</span>
+                    <button onClick={() => onRemoveRole(roleType, email)} className="p-1 text-red-500 hover:bg-red-500/20 rounded-full ml-2">
+                        <X size={14} />
+                    </button>
+                </div>
+            ))}
+        </div>
+        <div className="flex gap-2 pt-2">
+            <input
+                type="email"
+                placeholder={`Add ${roleType.slice(0, -1)} email...`}
+                value={newEmail}
+                onChange={(e) => onEmailChange(e, roleType)}
+                className="w-full p-2 rounded bg-black/40 border border-white/10 text-sm"
+            />
+            <button onClick={() => onAddRole(roleType)} className="px-4 py-2 rounded-md bg-accent/80 text-black font-bold hover:bg-accent transition text-sm">Add</button>
+        </div>
+    </div>
+);
+
+
 // --- #################### Manage Roles Modal Component (Refactored) #################### ---
 const ManageRolesModal = ({ isOpen, onClose, onSave, event, permissions }) => {
     const [roles, setRoles] = useState(event?.roles || { admins: [], managers: [], coordinators: [] });
     const [newEmails, setNewEmails] = useState({ admins: '', managers: '', coordinators: '' });
+    const [emailError, setEmailError] = useState('');
 
-    useEffect(() => { if (event) { setRoles(event.roles || { admins: [], managers: [], coordinators: [] }); } }, [event]);
+    useEffect(() => { 
+        if (event) { 
+            setRoles(event.roles || { admins: [], managers: [], coordinators: [] }); 
+            setEmailError(''); // Reset error when modal opens or event changes
+        } 
+    }, [event]);
 
     if (!isOpen || !event) return null;
 
     const handleAddRole = (roleType) => {
         const email = newEmails[roleType].trim().toLowerCase();
+        if (!email.endsWith('amrita.edu')) {
+            setEmailError('Email must end with amrita.edu');
+            return;
+        }
         if (email && !roles[roleType].includes(email)) {
             setRoles(prev => ({ ...prev, [roleType]: [...prev[roleType], email] }));
             setNewEmails(prev => ({ ...prev, [roleType]: '' }));
+            setEmailError(''); // Clear error on successful add
         }
     };
 
-    const handleRemoveRole = (roleType, email) => { setRoles(prev => ({ ...prev, [roleType]: prev[roleType].filter(r => r !== email) })); };
-    const handleSave = () => { onSave(event.id, roles); onClose(); };
-    const handleEmailInputChange = (e, roleType) => { setNewEmails(prev => ({ ...prev, [roleType]: e.target.value })); };
+    const handleRemoveRole = (roleType, email) => { 
+        setRoles(prev => ({ ...prev, [roleType]: prev[roleType].filter(r => r !== email) })); 
+    };
+    
+    const handleSave = () => { 
+        onSave(event.id, roles); 
+        onClose(); 
+    };
 
-    const RoleSection = ({ title, roleType }) => (
-        <div className="space-y-2">
-            <h4 className="font-bold text-lg text-white">{title}</h4>
-            <div className="space-y-2 max-h-32 overflow-y-auto pr-2">{roles[roleType]?.map(email => (<div key={email} className="flex items-center justify-between bg-black/30 p-2 rounded-md"><span className="text-sm text-gray-300">{email}</span><button onClick={() => handleRemoveRole(roleType, email)} className="p-1 text-red-500 hover:bg-red-500/20 rounded-full"><X size={14} /></button></div>))}</div>
-            <div className="flex gap-2 pt-2"><input type="email" placeholder={`Add ${roleType.slice(0, -1)} email...`} value={newEmails[roleType]} onChange={(e) => handleEmailInputChange(e, roleType)} className="w-full p-2 rounded bg-black/40 border border-white/10 text-sm" /><button onClick={() => handleAddRole(roleType)} className="px-4 py-2 rounded-md bg-accent/80 text-black font-bold hover:bg-accent transition text-sm">Add</button></div>
-        </div>
-    );
+    const handleEmailInputChange = (e, roleType) => { 
+        setNewEmails(prev => ({ ...prev, [roleType]: e.target.value })); 
+        if (emailError) {
+            setEmailError('');
+        }
+    };
 
     return (
         <motion.div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4" onClick={onClose}>
             <motion.div initial={{ scale: 0.9, y: 50 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.9, y: -50 }} className="bg-gray-900 border border-white/20 rounded-xl w-full max-w-2xl mx-auto" onClick={(e) => e.stopPropagation()}>
-                <div className="flex items-center justify-between p-4 border-b border-white/10"><h2 className="text-2xl font-bold text-white">Manage Roles for <span className="text-accent">{event.name}</span></h2><button type="button" onClick={onClose} className="p-2 rounded-full hover:bg-white/10"><X size={24} className="text-gray-400" /></button></div>
-                <div className="p-6 space-y-6 max-h-[70vh] overflow-y-auto">
-                    {permissions.canManageAdminRole && <RoleSection title="Administrators" roleType="admins" />}
-                    {permissions.canManageManagerRole && <RoleSection title="Managers" roleType="managers" />}
-                    {permissions.canManageCoordinatorRole && <RoleSection title="Coordinators" roleType="coordinators" />}
+                <div className="flex items-center justify-between p-4 border-b border-white/10">
+                    <h2 className="text-2xl font-bold text-white">Manage Roles for <span className="text-accent">{event.name}</span></h2>
+                    <button type="button" onClick={onClose} className="p-2 rounded-full hover:bg-white/10"><X size={24} className="text-gray-400" /></button>
                 </div>
-                <div className="p-4 bg-black/20 border-t border-white/10 flex justify-end"><button onClick={handleSave} className="px-6 py-2 rounded-md bg-accent text-black font-bold hover:bg-[#FF805A] transition">Save Changes</button></div>
+                <div className="p-6 space-y-6 max-h-[70vh] overflow-y-auto">
+                    {emailError && (
+                        <div className="flex items-center gap-2 p-2 text-sm text-red-400 bg-red-500/10 rounded-md">
+                            <AlertTriangle size={16} />
+                            <span>{emailError}</span>
+                        </div>
+                    )}
+                    {permissions.canManageAdminRole && <RoleSection title="Administrators" roleType="admins" roles={roles.admins} newEmail={newEmails.admins} onEmailChange={handleEmailInputChange} onAddRole={handleAddRole} onRemoveRole={handleRemoveRole} />}
+                    {permissions.canManageManagerRole && <RoleSection title="Managers" roleType="managers" roles={roles.managers} newEmail={newEmails.managers} onEmailChange={handleEmailInputChange} onAddRole={handleAddRole} onRemoveRole={handleRemoveRole} />}
+                    {permissions.canManageCoordinatorRole && <RoleSection title="Coordinators" roleType="coordinators" roles={roles.coordinators} newEmail={newEmails.coordinators} onEmailChange={handleEmailInputChange} onAddRole={handleAddRole} onRemoveRole={handleRemoveRole} />}
+                </div>
+                <div className="p-4 bg-black/20 border-t border-white/10 flex justify-end">
+                    <button onClick={handleSave} className="px-6 py-2 rounded-md bg-accent text-black font-bold hover:bg-[#FF805A] transition">Save Changes</button>
+                </div>
             </motion.div>
         </motion.div>
     );
@@ -216,8 +280,6 @@ const Adminactions = () => {
   const [isRolesModalOpen, setIsRolesModalOpen] = useState(false);
   const [eventToManageRoles, setEventToManageRoles] = useState(null);
   const [rolesModalPermissions, setRolesModalPermissions] = useState({});
-
-  const navigate = useNavigate();
 
   // --- Heavily updated permission logic ---
   const userPermissions = useMemo(() => {

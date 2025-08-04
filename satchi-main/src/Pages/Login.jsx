@@ -17,7 +17,7 @@ const Login = () => {
     const newPassword = e.target.value;
     setPassword(newPassword);
 
-    if (newPassword.length > 0 && (newPassword.length < 6 || newPassword.length > 8)) {
+    if (newPassword.length > 0 && (newPassword.length < 8)) {
       setPasswordError('Password must be 6-8 characters long.');
     } else {
       setPasswordError('');

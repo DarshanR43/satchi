@@ -3,14 +3,6 @@ import { NavLink, useLocation, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { FaBars, FaTimes, FaChevronDown, FaFileAlt } from "react-icons/fa";
 
-const menuItems = [
-  { label: "Home", path: "/" },
-  {label: "Admin", path: "/admin"},
-  {label: "Events", path: "/events" },
-  {label: "Login", path: "/login"},
-  
-];
-
 const Header = () => {
   const [showHeader, setShowHeader] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -18,24 +10,49 @@ const Header = () => {
   const [activeSubDropdown, setActiveSubDropdown] = useState(null);
   const location = useLocation();
   const navigate = useNavigate();
+  
+  // Simulated authentication state
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
 
   useEffect(() => {
-  const checkHeroVisible = () => {
-    const hero = document.getElementById("hero");
+    // For demonstration, we'll simulate a login status change.
+    // In a real app, you would get this from your auth context or state management.
+    const loggedInStatus = localStorage.getItem("isLoggedIn") === "true";
+    setIsLoggedIn(loggedInStatus);
+  }, []);
 
-    if (location.pathname !== "/") {
-      setShowHeader(true);
-    } else if (hero) {
-      const rect = hero.getBoundingClientRect();
-      setShowHeader(rect.bottom <= 50);
-    }
+  const handleLogout = () => {
+    localStorage.removeItem("isLoggedIn");
+    setIsLoggedIn(false);
+    navigate("/login");
   };
 
-  checkHeroVisible();
+  const menuItems = [
+    { label: "Home", path: "/" },
+    { label: "Admin", path: "/admin" },
+    { label: "Events", path: "/events" },
+    ...(isLoggedIn
+      ? [{ label: "Profile", path: "/profile" }]
+      : [{ label: "Login", path: "/login" }]),
+  ];
 
-  window.addEventListener("scroll", checkHeroVisible);
-  return () => window.removeEventListener("scroll", checkHeroVisible);
-}, [location.pathname]);
+  useEffect(() => {
+    const checkHeroVisible = () => {
+      const hero = document.getElementById("hero");
+
+      if (location.pathname !== "/") {
+        setShowHeader(true);
+      } else if (hero) {
+        const rect = hero.getBoundingClientRect();
+        setShowHeader(rect.bottom <= 50);
+      }
+    };
+
+    checkHeroVisible();
+
+    window.addEventListener("scroll", checkHeroVisible);
+    return () => window.removeEventListener("scroll", checkHeroVisible);
+  }, [location.pathname]);
 
   // For mobile, toggles
   const handleDropdownToggle = (idx) => {
@@ -60,7 +77,11 @@ const Header = () => {
         >
           <div className="flex items-center justify-between w-full">
             {/* Logo */}
-            <img src="/images/Satchi_main_logo.png" alt="Satchi Logo" className="h-8" />
+            <img
+              src="/images/Satchi_main_logo.png"
+              alt="Satchi Logo"
+              className="h-8"
+            />
 
             {/* Desktop Menu */}
             <ul className="hidden lg:flex items-center gap-4 text-sm font-medium">
@@ -75,7 +96,11 @@ const Header = () => {
                     <button
                       type="button"
                       className={`flex items-center gap-2 px-4 py-1 rounded-full transition cursor-pointer
-                        ${isActiveLink(item.path) ? "bg-accent text-deepBlue font-semibold" : ""}
+                        ${
+                          isActiveLink(item.path)
+                            ? "bg-accent text-deepBlue font-semibold"
+                            : ""
+                        }
                         hover:bg-accent/30 hover:text-accent`}
                       onClick={() =>
                         setActiveDropdown(activeDropdown === idx ? null : idx)
@@ -85,8 +110,11 @@ const Header = () => {
                     >
                       {item.label}
                       <FaChevronDown
-                        className={`ml-1 transition ${activeDropdown === idx ? "rotate-180 text-accent" : "text-white"
-                          }`}
+                        className={`ml-1 transition ${
+                          activeDropdown === idx
+                            ? "rotate-180 text-accent"
+                            : "text-white"
+                        }`}
                       />
                     </button>
                     <AnimatePresence>
@@ -109,10 +137,11 @@ const Header = () => {
                                 >
                                   {sub.label}
                                   <FaChevronDown
-                                    className={`ml-1 transition ${activeSubDropdown === i2
-                                      ? "rotate-180 text-accent"
-                                      : ""
-                                      }`}
+                                    className={`ml-1 transition ${
+                                      activeSubDropdown === i2
+                                        ? "rotate-180 text-accent"
+                                        : ""
+                                    }`}
                                   />
                                 </button>
                                 <AnimatePresence>
@@ -144,7 +173,9 @@ const Header = () => {
                               <button
                                 key={i2}
                                 className="block px-3 py-1 rounded transition text-sm hover:bg-accent/20 hover:text-accent w-full text-left"
-                                onClick={() => handleScrollNavigate(sub.scrollTo)}
+                                onClick={() =>
+                                  handleScrollNavigate(sub.scrollTo)
+                                }
                               >
                                 {sub.label}
                               </button>
@@ -153,9 +184,10 @@ const Header = () => {
                                 key={sub.path}
                                 to={sub.path}
                                 className={({ isActive }) =>
-                                  `block px-3 py-1 rounded transition text-sm ${isActive
-                                    ? "bg-accent/30 text-accent font-semibold"
-                                    : "hover:bg-accent/20 hover:text-accent"
+                                  `block px-3 py-1 rounded transition text-sm ${
+                                    isActive
+                                      ? "bg-accent/30 text-accent font-semibold"
+                                      : "hover:bg-accent/20 hover:text-accent"
                                   }`
                                 }
                                 onClick={() => {
@@ -176,9 +208,10 @@ const Header = () => {
                     <NavLink
                       to={item.path}
                       className={({ isActive }) =>
-                        `px-4 py-1 rounded-full transition cursor-pointer ${isActive
-                          ? "bg-accent text-deepBlue font-semibold"
-                          : "hover:bg-accent/30 hover:text-accent"
+                        `px-4 py-1 rounded-full transition cursor-pointer ${
+                          isActive
+                            ? "bg-accent text-deepBlue font-semibold"
+                            : "hover:bg-accent/30 hover:text-accent"
                         }`
                       }
                     >
@@ -186,6 +219,16 @@ const Header = () => {
                     </NavLink>
                   </li>
                 )
+              )}
+              {isLoggedIn && (
+                <li>
+                  <button
+                    onClick={handleLogout}
+                    className="px-4 py-1 rounded-full transition cursor-pointer hover:bg-accent/30 hover:text-accent"
+                  >
+                    Logout
+                  </button>
+                </li>
               )}
             </ul>
 
@@ -218,8 +261,9 @@ const Header = () => {
                       >
                         <span>{item.label}</span>
                         <FaChevronDown
-                          className={`ml-2 transition ${activeDropdown === idx ? "rotate-180 text-accent" : ""
-                            }`}
+                          className={`ml-2 transition ${
+                            activeDropdown === idx ? "rotate-180 text-accent" : ""
+                          }`}
                         />
                       </button>
                       <AnimatePresence>
@@ -241,10 +285,11 @@ const Header = () => {
                                   >
                                     <span>{sub.label}</span>
                                     <FaChevronDown
-                                      className={`ml-2 transition ${activeSubDropdown === i2
-                                        ? "rotate-180 text-accent"
-                                        : ""
-                                        }`}
+                                      className={`ml-2 transition ${
+                                        activeSubDropdown === i2
+                                          ? "rotate-180 text-accent"
+                                          : ""
+                                      }`}
                                     />
                                   </button>
                                   <AnimatePresence>
@@ -277,7 +322,9 @@ const Header = () => {
                                 <button
                                   key={i2}
                                   className="block px-2 py-1 rounded hover:bg-accent/20 hover:text-accent w-full text-left"
-                                  onClick={() => handleScrollNavigate(sub.scrollTo)}
+                                  onClick={() =>
+                                    handleScrollNavigate(sub.scrollTo)
+                                  }
                                 >
                                   {sub.label}
                                 </button>
@@ -310,6 +357,17 @@ const Header = () => {
                       {item.label}
                     </NavLink>
                   )
+                )}
+                {isLoggedIn && (
+                  <button
+                    onClick={() => {
+                      handleLogout();
+                      setMobileOpen(false);
+                    }}
+                    className="block w-full text-left px-4 py-2 rounded hover:bg-accent/30 hover:text-accent font-semibold"
+                  >
+                    Logout
+                  </button>
                 )}
               </motion.ul>
             )}

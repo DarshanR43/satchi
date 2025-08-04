@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { User, Mail, Phone, Hash, Building, Briefcase, Calendar, ChevronDown, UserCheck, CheckCircle, GraduationCap, BookOpenCheck, School, Lock, Eye, EyeOff } from 'lucide-react';
+import { User, Mail, Phone, Hash, Building, Briefcase, Calendar, ChevronDown, UserCheck, CheckCircle, GraduationCap, BookOpenCheck, School, Lock, Eye, EyeOff, WandSparkles } from 'lucide-react';
 
 // --- Reusable Component for Form Inputs ---
 const InputField = ({ name, type = 'text', placeholder, icon, error, value, onChange, className = '' }) => (
@@ -23,7 +23,7 @@ const InputField = ({ name, type = 'text', placeholder, icon, error, value, onCh
 );
 
 // --- Reusable Component for Password Inputs ---
-const PasswordField = ({ name, placeholder, icon, error, value, onChange, className = '' }) => {
+const PasswordField = ({ name, placeholder, icon, error, value, onChange, onGenerateClick, isGenerating, className = '' }) => {
     const [showPassword, setShowPassword] = useState(false);
     return (
         <div className={`relative ${className}`}>
@@ -36,15 +36,22 @@ const PasswordField = ({ name, placeholder, icon, error, value, onChange, classN
                 value={value}
                 onChange={onChange}
                 placeholder={placeholder}
-                className={`w-full p-3 pl-12 pr-12 rounded-lg bg-gray-900/50 border backdrop-blur-sm ${error ? 'border-red-500/50' : 'border-white/10'} focus:ring-2 focus:ring-accent focus:border-accent transition-all duration-300 outline-none focus:shadow-[0_0_15px_rgba(255,107,59,0.5)]`}
+                className={`w-full p-3 pl-12 pr-24 rounded-lg bg-gray-900/50 border backdrop-blur-sm ${error ? 'border-red-500/50' : 'border-white/10'} focus:ring-2 focus:ring-accent focus:border-accent transition-all duration-300 outline-none focus:shadow-[0_0_15px_rgba(255,107,59,0.5)]`}
             />
-            <button
-                type="button"
-                onClick={() => setShowPassword(!showPassword)}
-                className="absolute inset-y-0 right-0 pr-4 flex items-center z-10 text-gray-400 hover:text-accent"
-            >
-                {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
-            </button>
+             <div className="absolute inset-y-0 right-0 pr-2 flex items-center z-10">
+                {onGenerateClick && (
+                     <button type="button" onClick={onGenerateClick} disabled={isGenerating} className="p-2 text-gray-400 hover:text-accent disabled:opacity-50 disabled:cursor-wait">
+                         {isGenerating ? <motion.div animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 1, ease: "linear" }}><WandSparkles size={20} /></motion.div> : <WandSparkles size={20} />}
+                     </button>
+                )}
+                <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="p-2 text-gray-400 hover:text-accent"
+                >
+                    {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+                </button>
+            </div>
             <AnimatePresence>
                 {error && <motion.p initial={{opacity: 0, y: -5}} animate={{opacity: 1, y: 0}} exit={{opacity: 0}} className="text-red-400 text-xs mt-1 ml-2">{error}</motion.p>}
             </AnimatePresence>
@@ -87,8 +94,8 @@ const SignupPage = () => {
         "B.B.A., LL.B. (Hons.)": { years: 5 },
       },
       "School of Agricultural Sciences": {
-        "B. Sc. (Hons.) Agriculture": { years: 4 },
-        "M. Sc. (Agriculture) in Agronomy": { years: 2 },
+        "B. Sc. in (Hons.) Agriculture": { years: 4 },
+        "M. Sc. in (Agriculture) in Agronomy": { years: 2 },
         "Ph. D. in Agronomy": { years: 0 },
       },
       "School of Architecture": {
@@ -96,11 +103,11 @@ const SignupPage = () => {
         "Bachelor of Interior Design": { years: 4 },
       },
       "School of Artificial Intelligence": {
-        "B.Tech in Artificial Intelligence and Data Science": { years: 4 },
-        "B.Tech. Artificial Intelligence (AI) and Data Science (Medical Engineering)": { years: 4 },
-        "B. Tech. Artificial Intelligence (AI) and Data Science (Cyber Physical Systems and Security)": { years: 4 },
-        "B. Tech. Artificial Intelligence (AI) and Data Science (Autonomous Agents and Robotic Systems)": { years: 4 },
-        "B.Tech. Artificial Intelligence (AI) and Data Science (Quantum Technologies)": { years: 4 },
+        "B. Tech. in Artificial Intelligence and Data Science": { years: 4 },
+        "B. Tech. in  Artificial Intelligence (AI) and Data Science (Medical Engineering)": { years: 4 },
+        "B. Tech. in Artificial Intelligence (AI) and Data Science (Cyber Physical Systems and Security)": { years: 4 },
+        "B. Tech. in Artificial Intelligence (AI) and Data Science (Autonomous Agents and Robotic Systems)": { years: 4 },
+        "B. Tech. in Artificial Intelligence (AI) and Data Science (Quantum Technologies)": { years: 4 },
       },
       "School of Arts, Humanities & Commerce": {
         "B. A. (Hons) with Research in Mass Communication with Business Management and Media": { years: 4 },
@@ -127,16 +134,16 @@ const SignupPage = () => {
         "Ph. D. in Cyber Security": { years: 0 },
       },
       "School of Physical Sciences": {
-        "B.Sc. (Honours) in Chemistry": { years: 3 },
-        "B.Sc. (Honours) in Physics": { years: 3 },
-        "M.Sc. Chemistry": { years: 2 },
-        "Integrated MSc Data Science": { years: 5 },
-        "Ph.D. in Chemistry": { years: 0 },
+        "B. Sc. in (Honours) in Chemistry": { years: 3 },
+        "B. Sc. in (Honours) in Physics": { years: 3 },
+        "M. Sc. in Chemistry": { years: 2 },
+        "Integrated M. Sc. in Data Science": { years: 5 },
+        "Ph. D. in Chemistry": { years: 0 },
       },
       "School of Social & Behavioral Sciences": {
         "Bachelor of Social Work Honours with Research": { years: 4 },
         "MSW (Master of Social Work)": { years: 2 },
-        "Ph.D. in Social Work": { years: 0 },
+        "Ph. D. in Social Work": { years: 0 },
         "Post Graduate Diploma in Counselling Psychology": { years: 1 },
       },
     };
@@ -150,6 +157,7 @@ const SignupPage = () => {
     const [formData, setFormData] = useState(initialFormData);
     const [errors, setErrors] = useState({});
     const [isSuccess, setIsSuccess] = useState(false);
+    const [isGeneratingPassword, setIsGeneratingPassword] = useState(false);
 
     // --- Memoized options for dependent dropdowns ---
     const schoolOptions = Object.keys(schoolData);
@@ -235,9 +243,11 @@ const SignupPage = () => {
     const handleSubmit = (e) => {
         e.preventDefault();
         if (validateForm()) {
+            const currentType = userType; // Capture the current user type
             console.log('Form Submitted Successfully:', formData);
             setIsSuccess(true);
-            setFormData(initialFormData);
+            setFormData(initialFormData); // Reset the form data
+            setUserType(currentType); // Explicitly set the user type back to what it was
             setTimeout(() => setIsSuccess(false), 4000);
         } else {
             console.log('Form validation failed:', errors);
@@ -262,10 +272,19 @@ const SignupPage = () => {
                     <p className="text-gray-400 mt-2">Join the Amrita event ecosystem.</p>
                 </div>
 
-                <div className="relative flex bg-black/40 rounded-lg p-1 border border-white/10">
-                    <button onClick={() => handleUserTypeChange('student')} className={`relative w-1/2 p-2 rounded-md text-sm font-semibold z-10 transition-colors duration-300 ${userType === 'student' ? 'text-black' : 'text-white'}`}>Student</button>
-                    <button onClick={() => handleUserTypeChange('faculty')} className={`relative w-1/2 p-2 rounded-md text-sm font-semibold z-10 transition-colors duration-300 ${userType === 'faculty' ? 'text-black' : 'text-white'}`}>Faculty</button>
-                    <motion.div className="absolute top-1 bottom-1 left-1 w-1/2 h-[calc(100%-0.5rem)] bg-accent rounded-md" layoutId="active-pill" transition={{ type: "spring", stiffness: 380, damping: 35 }} animate={{ x: userType === 'student' ? '0%' : '100%' }}/>
+                <div className="flex bg-black/40 rounded-lg p-1 border border-white/10">
+                    <button 
+                        onClick={() => handleUserTypeChange('student')} 
+                        className={`w-1/2 p-2 rounded-md text-sm font-semibold transition-colors duration-300 ${userType === 'student' ? 'bg-accent text-black' : 'text-white'}`}
+                    >
+                        Student
+                    </button>
+                    <button 
+                        onClick={() => handleUserTypeChange('faculty')} 
+                        className={`w-1/2 p-2 rounded-md text-sm font-semibold transition-colors duration-300 ${userType === 'faculty' ? 'bg-accent text-black' : 'text-white'}`}
+                    >
+                        Faculty
+                    </button>
                 </div>
 
                 <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -282,7 +301,15 @@ const SignupPage = () => {
 
                     <InputField name="fullName" placeholder="Full Name" icon={<User className="text-gray-400" size={20} />} error={errors.fullName} value={formData.fullName} onChange={handleInputChange} />
                     <InputField name="email" type="email" placeholder="Amrita Email Address" icon={<Mail className="text-gray-400" size={20} />} error={errors.email} value={formData.email} onChange={handleInputChange} />
-                    <PasswordField name="password" placeholder="Password" icon={<Lock className="text-gray-400" size={20} />} error={errors.password} value={formData.password} onChange={handleInputChange} />
+                    <PasswordField 
+                        name="password" 
+                        placeholder="Password" 
+                        icon={<Lock className="text-gray-400" size={20} />} 
+                        error={errors.password} 
+                        value={formData.password} 
+                        onChange={handleInputChange} 
+                        isGenerating={isGeneratingPassword}
+                    />
                     <PasswordField name="confirmPassword" placeholder="Confirm Password" icon={<Lock className="text-gray-400" size={20} />} error={errors.confirmPassword} value={formData.confirmPassword} onChange={handleInputChange} />
                     <InputField name="phone" type="tel" placeholder="10-Digit Phone Number" icon={<Phone className="text-gray-400" size={20} />} error={errors.phone} value={formData.phone} onChange={handleInputChange} />
                     
@@ -329,7 +356,7 @@ const SignupPage = () => {
                 </form>
 
                 <p className="text-center text-sm text-gray-400">
-                    Already have an account? <a href="#" className="font-semibold text-accent hover:text-vibrant">Log In</a>
+                    Already have an account? <a href="/login" className="font-semibold text-accent hover:text-vibrant">Log In</a>
                 </p>
             </motion.div>
         </div>
