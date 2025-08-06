@@ -240,19 +240,52 @@ const SignupPage = () => {
         return Object.keys(newErrors).length === 0;
     };
 
-    const handleSubmit = (e) => {
+    const handleSubmit = async (e) => {
         e.preventDefault();
-        if (validateForm()) {
-            const currentType = userType; // Capture the current user type
-            console.log('Form Submitted Successfully:', formData);
+
+        // Reset success and errors
+        setIsSuccess(false);
+        setErrors({});
+
+        try {
+            const response = await fetch("http://localhost:8000/user/signup/", {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                ...formData,
+                userType,
+            }),
+            });
+
+            const data = await response.json();
+
+            if (response.ok) {
             setIsSuccess(true);
-            setFormData(initialFormData); // Reset the form data
-            setUserType(currentType); // Explicitly set the user type back to what it was
-            setTimeout(() => setIsSuccess(false), 4000);
-        } else {
-            console.log('Form validation failed:', errors);
+            setFormData({
+                fullName: '',
+                email: '',
+                password: '',
+                confirmPassword: '',
+                phone: '',
+                rollNo: '',
+                school: '',
+                degree: '',
+                course: '',
+                sex: '',
+                currentYear: '',
+                position: '',
+            });
+            } else {
+            setErrors(data.errors || { general: data.message || "Signup failed." });
+            }
+        } catch (error) {
+            console.error("Signup error:", error);
+            setErrors({ general: "Something went wrong. Please try again." });
         }
     };
+
 
     return (
         <div className="relative my-20 w-full min-h-screen px-4 sm:px-6 lg:px-8 flex items-center justify-center text-white font-body overflow-hidden">

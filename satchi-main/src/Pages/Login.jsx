@@ -1,10 +1,12 @@
 import React, { useEffect, useState } from "react";
 import { motion } from "framer-motion";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 
 const Login = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+
+  const navigate = useNavigate();
 
   const [emailError, setEmailError] = useState("");
   const [passwordError, setPasswordError] = useState('');
@@ -17,8 +19,8 @@ const Login = () => {
     const newPassword = e.target.value;
     setPassword(newPassword);
 
-    if (newPassword.length > 0 && (newPassword.length < 8)) {
-      setPasswordError('Password must be 6-8 characters long.');
+    if (newPassword.length < 8) {
+      setPasswordError('Password must be at least 8 characters long.');
     } else {
       setPasswordError('');
     }
@@ -36,7 +38,7 @@ const Login = () => {
 
   useEffect(() => {
     const isEmailValid = emailRegex.test(email);
-    const isPasswordValid = password.length >= 6 && password.length <= 8;
+    const isPasswordValid = password.length >= 8;
     setIsFormValid(isEmailValid && isPasswordValid);
   }, [email, password, emailRegex]);
 
@@ -50,7 +52,7 @@ const handleSubmit = async (e) => {
   }
 
   try {
-    const response = await fetch("http://localhost:8000/api/login/", {
+    const response = await fetch("http://localhost:8000/user/login/", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -67,10 +69,7 @@ const handleSubmit = async (e) => {
 
     const data = await response.json();
     console.log("Login successful:", data);
-
-    // e.g., store token or redirect
-    // localStorage.setItem("token", data.token);
-    // navigate("/dashboard");
+    navigate("/");
 
   } catch (error) {
     console.error("Error during login:", error);
