@@ -3,7 +3,7 @@ from functools import wraps
 from .models import User, EventUserMapping
 from functools import wraps
 from django.http import HttpResponseForbidden
-from events.models import EventUserMapping
+from .models import EventUserMapping
 
 def event_role_required(allowed_roles, event_level='main'):
     """
