@@ -1,82 +1,51 @@
 import React, { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import { Link, useNavigate } from "react-router-dom";
+import { useAuth } from "../context/AuthContext"; // Import the useAuth hook
 
 const Login = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-
+  const [error, setError] = useState("");
   const navigate = useNavigate();
+  const { login } = useAuth(); // Get the login function from context
 
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setError(""); // Clear previous errors
+    try {
+      await login(email, password);
+      navigate("/profile"); // Navigate to profile page on successful login
+    } catch (err) {
+      setError("Login failed. Please check your credentials.");
+      console.error("Error during login:", err);
+    }
+  };
+
+  // The rest of your validation logic can remain the same
   const [emailError, setEmailError] = useState("");
   const [passwordError, setPasswordError] = useState('');
-
   const [isFormValid, setIsFormValid] = useState(false);
-
   const emailRegex = /^[a-z0-9.@]+.amrita\.edu$/;
 
   const handlePasswordChange = (e) => {
     const newPassword = e.target.value;
     setPassword(newPassword);
-
-    if (newPassword.length < 8) {
-      setPasswordError('Password must be at least 8 characters long.');
-    } else {
-      setPasswordError('');
-    }
+    setPasswordError(newPassword.length < 8 ? 'Password must be at least 8 characters long.' : '');
   };
 
   const handleEmailChange = (e) => {
       const newEmail = e.target.value;
       setEmail(newEmail);
-      if (newEmail.length > 0 && !emailRegex.test(newEmail)) {
-          setEmailError("Invalid format. Email must end with amrita.edu");
-      } else {
-          setEmailError("");
-      }
+      setEmailError(newEmail.length > 0 && !emailRegex.test(newEmail) ? "Invalid format. Email must end with amrita.edu" : "");
   };
 
   useEffect(() => {
-    const isEmailValid = emailRegex.test(email);
-    const isPasswordValid = password.length >= 8;
-    setIsFormValid(isEmailValid && isPasswordValid);
-  }, [email, password, emailRegex]);
+    setIsFormValid(emailRegex.test(email) && password.length >= 8);
+  }, [email, password]);
 
 
-const handleSubmit = async (e) => {
-  e.preventDefault();
-
-  if (!isFormValid) {
-    console.error("Attempted to submit with invalid form.");
-    return;
-  }
-
-  try {
-    const response = await fetch("http://localhost:8000/user/login/", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        email: email,
-        password: password,
-      }),
-    });
-
-    if (!response.ok) {
-      throw new Error("Login failed");
-    }
-
-    const data = await response.json();
-    console.log("Login successful:", data);
-    navigate("/");
-
-  } catch (error) {
-    console.error("Error during login:", error);
-  }
-};
-
-  return(
+  return (
     <div className="pt-12 my-40">
       <motion.div
         initial={{ opacity: 0, y: 50 }}
@@ -90,6 +59,7 @@ const handleSubmit = async (e) => {
         </h2>
 
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+          {error && <p className="text-red-400 text-center bg-red-500/10 p-2 rounded-md">{error}</p>}
           {/* Email Input */}
           <div className="flex flex-col">
             <label htmlFor="email" className="mb-2 text-sm font-medium text-gray-300">Email Address</label>
@@ -137,7 +107,7 @@ const handleSubmit = async (e) => {
         </form>
       </motion.div>
     </div>
-    )
-}
+  );
+};
 
 export default Login;
