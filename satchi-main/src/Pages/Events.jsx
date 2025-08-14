@@ -5,7 +5,7 @@ import { ChevronDown, X, Loader } from 'lucide-react';
 import axios from 'axios';
 
 // --- API Service ---
-// Use Vite's import.meta.env to access environment variables
+// Use Vite's import.meta.env for environment variables
 const API_URL = import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000/api/';
 
 const getEvents = async () => {
@@ -66,7 +66,7 @@ const SubSubEventsModal = ({ subEvent, isOpen, onClose, onRegister }) => {
                         <p className="text-sm text-gray-400 mt-1">{ssEvent.description}</p>
                       </div>
                       <button
-                        onClick={onRegister}
+                        onClick={() => onRegister(ssEvent)}
                         disabled={!isRegistrationOpen}
                         className="px-4 py-2 w-full sm:w-auto rounded-md text-sm font-bold bg-accent text-deepBlue transition-all duration-300 disabled:bg-gray-600 disabled:cursor-not-allowed hover:enabled:shadow-[0_0_15px_#FFAB00] flex-shrink-0"
                       >
@@ -104,7 +104,6 @@ const Events = () => {
         const data = await getEvents();
         setEvents(data);
 
-        // Auto-expand the first event
         if (data && data.length > 0) {
           setExpandedEvents({ [data[0].id]: true });
         }
@@ -118,8 +117,8 @@ const Events = () => {
     fetchEvents();
   }, []);
 
-  const handleRegister = () => {
-    navigate('/register');
+  const handleRegister = (eventToRegister) => {
+    navigate(`/register/${eventToRegister.id}`);
   };
 
   const toggleExpand = (eventId) => {
