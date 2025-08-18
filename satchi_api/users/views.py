@@ -1,9 +1,9 @@
-from rest_framework.decorators import api_view
+from rest_framework.decorators import api_view, permission_classes, authentication_classes
 from rest_framework.response import Response
 from rest_framework import status
 from django.contrib.auth import authenticate,logout
 from django.contrib.auth.decorators import login_required
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.authtoken.models import Token
 from django.contrib.auth import get_user_model
 from .decorators import event_role_required
@@ -64,6 +64,7 @@ def signup_view(request):
     return Response({"error": "Invalid request method"}, status=status.HTTP_405_METHOD_NOT_ALLOWED)
 
 @api_view(['POST'])
+@permission_classes([AllowAny])  # anyone can access login
 def login_view(request):
     email = request.data.get("email")
     password = request.data.get("password")
@@ -74,18 +75,18 @@ def login_view(request):
         return Response({
             "token": token.key,
             "user": {
-                    "id": user.id,  # don’t use phone as id unless intentional
-                    "email": user.email,
-                    "role": getattr(user, "role", None),
-                    "full_name": getattr(user, "full_name", None),
-                    "phone": getattr(user, "phone", None),
-                    "school": getattr(user, "school", None),
-                    "degree": getattr(user, "degree", None),
-                    "course": getattr(user, "course", None),
-                    "roll_no": getattr(user, "roll_no", None),
-                    "sex": getattr(user, "sex", None),
-                    "current_year": getattr(user, "current_year", None),
-                    "position": getattr(user, "position", None),
+                "id": user.phone,
+                "email": user.email,
+                "role": user.role,
+                "full_name": user.full_name,
+                "phone": user.phone,
+                "school": user.school,
+                "degree": user.degree,
+                "course": user.course,
+                "roll_no": user.roll_no,
+                "sex": user.sex,
+                "current_year": user.current_year,
+                "position": user.position
             }
         })
     return Response({"error": "Invalid credentials"}, status=status.HTTP_401_UNAUTHORIZED)
@@ -97,21 +98,26 @@ def logout_view(request):
         request.auth.delete()
     return Response({"success": "Logged out"}, status=status.HTTP_200_OK)
 
+
 @api_view(['GET'])
+@permission_classes([IsAuthenticated])
 def get_user_details(request):
-    user = request.user
-    user_data = {
-        "id": user.id,  # don’t use phone as id unless intentional
-        "email": user.email,
-        "role": getattr(user, "role", None),
-        "full_name": getattr(user, "full_name", None),
-        "phone": getattr(user, "phone", None),
-        "school": getattr(user, "school", None),
-        "degree": getattr(user, "degree", None),
-        "course": getattr(user, "course", None),
-        "roll_no": getattr(user, "roll_no", None),
-        "sex": getattr(user, "sex", None),
-        "current_year": getattr(user, "current_year", None),
-        "position": getattr(user, "position", None),
-    }
-    return Response({"user": user_data}, status=status.HTTP_200_OK)
+    if not request.user.is_authenticated:
+        return Response({"error": "User not authenticated"}, status=status.HTTP_401_UNAUTHORIZED)
+    else:
+        user = request.user
+        user_data = {
+                "id": user.phone,
+                "email": user.email,
+                "role": user.role,
+                "full_name": user.full_name,
+                "phone": user.phone,
+                "school": user.school,
+                "degree": user.degree,
+                "course": user.course,
+                "roll_no": user.roll_no,
+                "sex": user.sex,
+                "current_year": user.current_year,
+                "position": user.position
+        }
+        return Response({"user": user_data}, status=status.HTTP_200_OK)

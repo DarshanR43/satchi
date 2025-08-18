@@ -30,7 +30,7 @@ export const AuthProvider = ({ children }) => {
             if (token) {
                 try {
                     const response = await axios.get(`${API_URL}/user/profile/`);
-                    setUser(response.data);
+                    setUser(response.data.user);
                 } catch (error) {
                     console.error("Failed to fetch user with stored token.", error);
                     setToken(null); // Clear invalid token
