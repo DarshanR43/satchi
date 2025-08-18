@@ -74,9 +74,18 @@ def login_view(request):
         return Response({
             "token": token.key,
             "user": {
-                "id": user.phone,
-                "email": user.email,
-                "role": user.role,
+                    "id": user.id,  # don’t use phone as id unless intentional
+                    "email": user.email,
+                    "role": getattr(user, "role", None),
+                    "full_name": getattr(user, "full_name", None),
+                    "phone": getattr(user, "phone", None),
+                    "school": getattr(user, "school", None),
+                    "degree": getattr(user, "degree", None),
+                    "course": getattr(user, "course", None),
+                    "roll_no": getattr(user, "roll_no", None),
+                    "sex": getattr(user, "sex", None),
+                    "current_year": getattr(user, "current_year", None),
+                    "position": getattr(user, "position", None),
             }
         })
     return Response({"error": "Invalid credentials"}, status=status.HTTP_401_UNAUTHORIZED)
@@ -88,16 +97,21 @@ def logout_view(request):
         request.auth.delete()
     return Response({"success": "Logged out"}, status=status.HTTP_200_OK)
 
-
+@api_view(['GET'])
 def get_user_details(request):
-    if not request.user.is_authenticated:
-        return Response({"error": "User not authenticated"}, status=status.HTTP_401_UNAUTHORIZED)
-    else:
-        user = request.user
-        user_data = {
-            "email": user.email,
-            "full_name": user.full_name,
-            "phone": user.phone,
-            "role": user.role,
-        }
-        return Response({"user": user_data}, status=status.HTTP_200_OK)
+    user = request.user
+    user_data = {
+        "id": user.id,  # don’t use phone as id unless intentional
+        "email": user.email,
+        "role": getattr(user, "role", None),
+        "full_name": getattr(user, "full_name", None),
+        "phone": getattr(user, "phone", None),
+        "school": getattr(user, "school", None),
+        "degree": getattr(user, "degree", None),
+        "course": getattr(user, "course", None),
+        "roll_no": getattr(user, "roll_no", None),
+        "sex": getattr(user, "sex", None),
+        "current_year": getattr(user, "current_year", None),
+        "position": getattr(user, "position", None),
+    }
+    return Response({"user": user_data}, status=status.HTTP_200_OK)
