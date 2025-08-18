@@ -5,6 +5,7 @@ class MainEvent(models.Model):
     name = models.CharField(max_length=255)
     description = models.TextField(blank=True, null=True)
     event_id = models.CharField(max_length=100, unique=True, blank=True, editable=False)
+    isOpen = models.BooleanField(default=True,null=True, blank=True)
 
     def save(self, *args, **kwargs):
         if not self.event_id:
@@ -21,6 +22,7 @@ class SubEvent(models.Model):
     name = models.CharField(max_length=255)
     description = models.TextField(blank=True, null=True)
     event_id = models.CharField(max_length=100, unique=True, blank=True, editable=False)
+    isOpen = models.BooleanField(default=True,null=True, blank=True)
 
     def save(self, *args, **kwargs):
         if not self.event_id:
@@ -38,6 +40,7 @@ class SubSubEvent(models.Model):
     parent_subevent = models.ForeignKey(SubEvent, related_name='subsubevents', on_delete=models.CASCADE)
     name = models.CharField(max_length=255)
     description = models.TextField(blank=True, null=True)
+    isOpen = models.BooleanField(default=True,null=True, blank=True)
 
     rules = models.TextField(blank=True, null=True)
     minTeamSize = models.PositiveIntegerField(default=1)

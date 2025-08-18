@@ -4,27 +4,11 @@ from rest_framework import status
 from django.contrib.auth import authenticate,logout
 from django.contrib.auth.decorators import login_required
 from rest_framework.permissions import IsAuthenticated
+from rest_framework.authtoken.models import Token
 from django.contrib.auth import get_user_model
 from .decorators import event_role_required
 
 User = get_user_model()
-
-@api_view(['POST'])
-def login_view(request):
-    email = request.data.get('email')
-    password = request.data.get('password')
-
-    if not email or not password:
-        return Response({"error": "Email and password are required"}, status=status.HTTP_400_BAD_REQUEST)
-
-    user = authenticate(username=email, password=password)
-
-    if user is not None:
-        return Response({
-            "message": "Login successful"
-        }, status=status.HTTP_200_OK)
-    else:
-        return Response({"error": "Invalid credentials"}, status=status.HTTP_401_UNAUTHORIZED)
 
 @api_view(['POST'])
 def signup_view(request):
@@ -79,6 +63,41 @@ def signup_view(request):
 
     return Response({"error": "Invalid request method"}, status=status.HTTP_405_METHOD_NOT_ALLOWED)
 
+@api_view(['POST'])
+def login_view(request):
+    email = request.data.get("email")
+    password = request.data.get("password")
+    user = authenticate(username=email, password=password)
+
+    if user:
+        token, created = Token.objects.get_or_create(user=user)
+        return Response({
+            "token": token.key,
+            "user": {
+                "id": user.phone,
+                "email": user.email,
+                "role": user.role,
+            }
+        })
+    return Response({"error": "Invalid credentials"}, status=status.HTTP_401_UNAUTHORIZED)
+
+
+@api_view(['POST'])
 def logout_view(request):
-    logout(request.user)
-    return Response({"message": "Logout successful"}, status=status.HTTP_200_OK)
+    if request.auth:
+        request.auth.delete()
+    return Response({"success": "Logged out"}, status=status.HTTP_200_OK)
+
+
+def get_user_details(request):
+    if not request.user.is_authenticated:
+        return Response({"error": "User not authenticated"}, status=status.HTTP_401_UNAUTHORIZED)
+    else:
+        user = request.user
+        user_data = {
+            "email": user.email,
+            "full_name": user.full_name,
+            "phone": user.phone,
+            "role": user.role,
+        }
+        return Response({"user": user_data}, status=status.HTTP_200_OK)
