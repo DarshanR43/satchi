@@ -171,8 +171,8 @@ def update_event_users(request):
     return Response({"ok": True, "created": created}, status=200)
 
 
-
-@api_view(['POST'])
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
 def get_events(request):
     mainEvents = MainEvent.objects.all()
     respData = []
