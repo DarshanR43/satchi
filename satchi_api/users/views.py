@@ -11,6 +11,7 @@ from .decorators import event_role_required
 User = get_user_model()
 
 @api_view(['POST'])
+@permission_classes([AllowAny]) 
 def signup_view(request):
     if request.method == 'POST':
         print("Received data:", request.data)
@@ -22,7 +23,7 @@ def signup_view(request):
 
         if user_type != 'student':
             position = request.data.get('position', '')
-            phone = None
+            phone = request.data.get('phone', '')
             roll_no = None
             school = request.data.get('school', '')
             degree = None
@@ -40,7 +41,6 @@ def signup_view(request):
             current_year = request.data.get('currentYear', '')
 
         # All users default to PARTICIPANT role
-        print("Received data:", request.data)
         user = User(
             email=email,
             username=email,  # Required for AbstractUser
