@@ -61,6 +61,14 @@ const AddEventModal = ({ isOpen, onClose, onSave, allEvents, creationContext = {
     }
   }, [isOpen, creationContext]);
 
+  // CORRECTED: useMemo is now called unconditionally at the top level.
+  const subEventOptions = useMemo(() => {
+    if (!formData.parentId) return [];
+    const parentEvent = allEvents.find((e) => e.id === parseInt(formData.parentId));
+    return parentEvent ? parentEvent.subEvents : [];
+  }, [formData.parentId, allEvents]);
+
+  // Early return is now after all hooks have been called.
   if (!isOpen) return null;
 
   const handleInputChange = (e) => {
@@ -68,16 +76,10 @@ const AddEventModal = ({ isOpen, onClose, onSave, allEvents, creationContext = {
     setFormData((prev) => ({ ...prev, [name]: type === 'checkbox' ? checked : value }));
   };
 
-  const handleSaveClick = (e) => {
+  const handleSaveSubmit = (e) => {
     e.preventDefault();
     onSave(eventType, formData);
   };
-
-  const subEventOptions = useMemo(() => {
-    if (!formData.parentId) return [];
-    const parentEvent = allEvents.find((e) => e.id === parseInt(formData.parentId));
-    return parentEvent ? parentEvent.subEvents : [];
-  }, [formData.parentId, allEvents]);
 
   return (
     <motion.div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4" onClick={onClose}>
@@ -88,7 +90,7 @@ const AddEventModal = ({ isOpen, onClose, onSave, allEvents, creationContext = {
         className="bg-gray-900 border border-white/20 rounded-xl w-full max-w-2xl mx-auto"
         onClick={(e) => e.stopPropagation()}
       >
-        <form onSubmit={handleSaveClick}>
+        <form onSubmit={handleSaveSubmit}>
           <div className="flex items-center justify-between p-4 border-b border-white/10">
             <h2 className="text-2xl font-bold text-white">Create New Event</h2>
             <button type="button" onClick={onClose} className="p-2 rounded-full hover:bg-white/10">
@@ -372,16 +374,14 @@ const ManageRolesModal = ({ isOpen, onClose, onSave, event, eventLevel }) => {
 
 // --- #################### Main Admin Component #################### ---
 const AdminPage = () => {
-  const { user, isAuthenticated } = useAuth();
+  const { user, isAuthenticated, token } = useAuth();
 
-  // token from AuthContext (recommended) or fallback to localStorage
-  const token = user?.token || localStorage.getItem('authToken');
-
-  // axios instance that auto-injects the Token header
   const api = useMemo(() => {
     const instance = axios.create({ baseURL: API_URL });
     instance.interceptors.request.use((config) => {
-      if (token) config.headers.Authorization = `Token ${token}`;
+      if (token) {
+        config.headers.Authorization = `Token ${token}`;
+      }
       return config;
     });
     return instance;
@@ -405,13 +405,16 @@ const AdminPage = () => {
     setLoading(true);
     try {
       const response = await api.get('/events/admin-data/');
-      const payload = response.data.events || response.data; // supports both shapes
+      const payload = response.data.events || response.data;
       const structuredEvents = structureEvents(payload);
       setEvents(structuredEvents);
       setError(null);
     } catch (err) {
-      if (err.response?.status === 401) setError('Your token is invalid or expired. Please log in again.');
-      else setError('Failed to load your event data. You may not be assigned to any events.');
+      if (err.response?.status === 401) {
+        setError('Your token is invalid or expired. Please log in again.');
+      } else {
+        setError('Failed to load your event data. You may not be assigned to any events.');
+      }
     } finally {
       setLoading(false);
     }
@@ -419,7 +422,6 @@ const AdminPage = () => {
 
   useEffect(() => {
     fetchAdminData();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isAuthenticated, token]);
 
   const structureEvents = (flatList) => {
@@ -436,6 +438,42 @@ const AdminPage = () => {
     return Object.values(mainEvents);
   };
 
+  const handleCreateEvent = async (eventType, data) => {
+    try {
+      await api.post('/events/create_event/', { eventType, ...data });
+      setIsAddEventModalOpen(false);
+      fetchAdminData();
+    } catch (error) {
+      console.error("Create event error:", error);
+      alert('Error: Could not create event.');
+    }
+  };
+
+  const handleDeleteEvent = async () => {
+    if (!modalContext) return;
+    try {
+      await api.delete(`/events/delete_event/${modalContext.level}/${modalContext.id}/`);
+      setIsDeleteModalOpen(false);
+      setModalContext(null);
+      fetchAdminData();
+    } catch (error) {
+      console.error("Delete event error:", error);
+      alert('Error: Could not delete event.');
+    }
+  };
+
+  const handleSaveRoles = async (eventId, level, newRoles) => {
+    try {
+      await api.post('/events/update_event_users/', { eventId, level, roles: newRoles });
+      setIsRolesModalOpen(false);
+      fetchAdminData();
+    } catch (error) {
+      console.error("Save roles error:", error);
+      const msg = error.response?.data?.error || 'Error: Could not save roles.';
+      alert(msg);
+    }
+  };
+
   const openDeleteModal = (id, level, name) => {
     setModalContext({ id, level, name });
     setIsDeleteModalOpen(true);
@@ -449,41 +487,6 @@ const AdminPage = () => {
     setIsAddEventModalOpen(true);
   };
   const toggleExpand = (id) => setExpandedEvents((prev) => ({ ...prev, [id]: !prev[id] }));
-
-  // --- API actions with auth header via axios instance ---
-
-   const handleCreateEvent = async (eventType, data) => {
-    try {
-      await api.post('events/create_event/', { eventType, ...data });
-      setIsAddEventModalOpen(false);
-      fetchAdminData();
-    } catch (error) {
-      alert('Error: Could not create event.');
-    }
-  };
-
-  const handleDeleteEvent = async () => {
-    if (!modalContext) return;
-    try {
-      await api.delete(`events/delete_event/${modalContext.level}/${modalContext.id}/`);
-      setIsDeleteModalOpen(false);
-      setModalContext(null);
-      fetchAdminData();
-    } catch (error) {
-      alert('Error: Could not delete event.');
-    }
-  };
-
-  const handleSaveRoles = async (eventId, level, newRoles) => {
-    try {
-      await api.post('events/update_event_users/', { eventId, level, roles: newRoles });
-      setIsRolesModalOpen(false);
-      fetchAdminData();
-    } catch (error) {
-      const msg = error.response?.data?.error || 'Error: Could not save roles.';
-      alert(msg);
-    }
-  };
 
   if (loading) return <div className="flex justify-center items-center min-h-screen">Loading Dashboard...</div>;
   if (error) return <div className="flex justify-center items-center min-h-screen text-red-400">{error}</div>;
