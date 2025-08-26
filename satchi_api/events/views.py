@@ -1,6 +1,6 @@
 from django.shortcuts import get_object_or_404
 from django.db import transaction
-from rest_framework.decorators import api_view
+from rest_framework.decorators import api_view,permission_classes
 from rest_framework.response import Response
 from rest_framework import status
 from .models import MainEvent, SubEvent, SubSubEvent
@@ -203,12 +203,14 @@ def get_events(request):
 
     return Response(respData, status=status.HTTP_200_OK)
 
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
 def admin_data(request):
     """
     Return all events where the current user is mapped, with their role.
     """
     user = request.user
-    mappings = EventUserMapping.objects.filter(user=user).select_related(
+    mappings = EventUserMapping.objects.filter(user=user.id).select_related(
         "main_event", "sub_event", "sub_sub_event"
     )
 
