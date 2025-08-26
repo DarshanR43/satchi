@@ -26,7 +26,7 @@ const Login = () => {
   const [emailError, setEmailError] = useState("");
   const [passwordError, setPasswordError] = useState('');
   const [isFormValid, setIsFormValid] = useState(false);
-  const emailRegex = /^[a-z0-9.@]+.amrita\.edu$/;
+  const emailRegex = /^[^\s@_]+@(.+\.)?amrita\.edu$/;
 
   const handlePasswordChange = (e) => {
     const newPassword = e.target.value;

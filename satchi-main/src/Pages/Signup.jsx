@@ -208,7 +208,7 @@ const SignupPage = () => {
         
         if (!formData.email.trim()) {
             newErrors.email = 'Email is required.';
-        } else if (!/^[^\s@]+@(.+\.)?amrita\.edu$/.test(formData.email.trim())) {
+        } else if (!/^[^\s@_]+@(.+\.)?amrita\.edu$/.test(formData.email.trim())) {
             newErrors.email = 'Email must be a valid Amrita domain (e.g., user@cb.amrita.edu)';
         }
         

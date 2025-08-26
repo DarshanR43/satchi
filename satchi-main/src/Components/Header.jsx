@@ -9,17 +9,28 @@ const Header = () => {
   const [mobileOpen, setMobileOpen] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
-  const { isAuthenticated, logout } = useAuth();
+  // 1. Get the full user object from the context
+  const { isAuthenticated, logout, user } = useAuth();
 
   const handleLogout = async () => {
     await logout();
     navigate("/login");
   };
 
+  // 2. Define which roles are considered "admin" roles
+  const adminRoles = [
+    "Super Admin", "Event Admin", "Sub Event Admin", 
+    "Event Manager", "Sub Event Manager", "Sub Sub Event Manager"
+  ];
+
+  // 3. Check if the current user's role is in the admin list
+  const isAdmin = user && adminRoles.includes(user.role);
+
   const menuItems = [
     { label: "Home", path: "/" },
     { label: "Events", path: "/events" },
-    ...(isAuthenticated ? [{ label: "Admin", path: "/admin" }] : []),
+    // 4. Conditionally add the Admin link based on the isAdmin check
+    ...(isAdmin ? [{ label: "Admin", path: "/admin" }] : []),
     ...(isAuthenticated
       ? [{ label: "Profile", path: "/profile" }]
       : [{ label: "Login", path: "/login" }]),
@@ -51,7 +62,6 @@ const Header = () => {
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: -40 }}
           transition={{ duration: 0.5 }}
-          // --- Corrected Classes ---
           className="fixed top-0 left-0 right-0 z-50"
         >
           <div
