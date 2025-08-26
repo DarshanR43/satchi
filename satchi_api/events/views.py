@@ -93,9 +93,17 @@ def delete_event(request, level: str, pk: int):
     """
     lvl = (level or "").lower()
     if lvl == "main":
-        get_object_or_404(MainEvent, pk=pk).delete()
+        main = get_object_or_404(MainEvent, pk=pk)
+        sub = get_object_or_404(SubEvent, parent_event=main)
+        sub_sub = get_object_or_404(SubSubEvent, parent_event=main)
+        main.delete()
+        sub.delete()
+        sub_sub.delete()
     elif lvl == "sub":
-        get_object_or_404(SubEvent, pk=pk).delete()
+        sub = get_object_or_404(SubEvent, pk=pk)
+        sub_sub = get_object_or_404(SubSubEvent, parent_subevent=sub)
+        sub.delete()
+        sub_sub.delete()
     elif lvl in ("subsub", "sub_sub"):
         get_object_or_404(SubSubEvent, pk=pk).delete()
     else:
