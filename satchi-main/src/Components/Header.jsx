@@ -19,8 +19,8 @@ const Header = () => {
 
   // 2. Define which roles are considered "admin" roles
   const adminRoles = [
-    "Super Admin", "Event Admin", "Sub Event Admin", 
-    "Event Manager", "Sub Event Manager", "Sub Sub Event Manager"
+    "SUPERADMIN", "Super Admin", "EVENTADMIN", "Event Admin", "SUBEVENTADMIN", "Sub Event Admin", "EVENTMANAGER", "Event Manager", 
+    "SUBEVENTMANAGER", "Sub Event Manager", "SUBSUBEVENTMANAGER", "Sub Sub Event Manager", "COORDINATOR", "Coordinator"
   ];
 
   // 3. Check if the current user's role is in the admin list

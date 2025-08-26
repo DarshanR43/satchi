@@ -262,21 +262,24 @@ const SignupPage = () => {
             const data = await response.json();
 
             if (response.ok) {
-            setIsSuccess(true);
-            setFormData({
-                fullName: '',
-                email: '',
-                password: '',
-                confirmPassword: '',
-                phone: '',
-                rollNo: '',
-                school: '',
-                degree: '',
-                course: '',
-                sex: '',
-                currentYear: '',
-                position: '',
-            });
+                setIsSuccess(true);
+                setFormData({
+                    fullName: '',
+                    email: '',
+                    password: '',
+                    confirmPassword: '',
+                    phone: '',
+                    rollNo: '',
+                    school: '',
+                    degree: '',
+                    course: '',
+                    sex: '',
+                    currentYear: '',
+                    position: '',
+                });
+                setTimeout(() => {
+                    navigate('/login');
+                }, 2000);
             } else {
             setErrors(data.errors || { general: data.message || "Signup failed." });
             }
