@@ -38,12 +38,22 @@ def create_event(request):
 
     if etype == "main":
         obj = MainEvent.objects.create(name=name, description=description)
+        # your logic: creator mapped as SUPERADMIN at main
+        EventUserMapping.objects.create(
+            user=request.user,
+            main_event=obj,
+            user_role=User.Role.SUPERADMIN,
+        )
         return Response({"id": obj.id, "level": "main"}, status=201)
 
     if etype == "sub":
         main = get_object_or_404(MainEvent, pk=data.get("parentId"))
-        obj = SubEvent.objects.create(
-            parent_event=main, name=name, description=description
+        obj = SubEvent.objects.create(parent_event=main, name=name, description=description)
+        # your logic: EVENTADMIN unless superuser => SUPERADMIN
+        EventUserMapping.objects.create(
+            user=request.user,
+            sub_event=obj,
+            user_role=User.Role.EVENTADMIN if not request.user.is_superuser else User.Role.SUPERADMIN,
         )
         return Response({"id": obj.id, "level": "sub"}, status=201)
 
@@ -51,7 +61,6 @@ def create_event(request):
         main = get_object_or_404(MainEvent, pk=data.get("parentId"))
         sub = get_object_or_404(SubEvent, pk=data.get("subParentId"), parent_event=main)
 
-        # map frontend fields -> model fields
         obj = SubSubEvent.objects.create(
             parent_event=main,
             parent_subevent=sub,
@@ -63,10 +72,17 @@ def create_event(request):
             minFemaleParticipants=int(data.get("minFemaleMembers") or 0),
             isFacultyMentorRequired=bool(data.get("facultyMentor")),
         )
+        # your logic: SUPERADMIN if superuser else SUBEVENTADMIN,
+        # but if user's role is EVENTADMIN, keep EVENTADMIN
+        role = User.Role.SUBEVENTADMIN if not request.user.is_superuser else User.Role.SUPERADMIN
+        EventUserMapping.objects.create(
+            user=request.user,
+            sub_sub_event=obj,
+            user_role=role if request.user.role != User.Role.EVENTADMIN else User.Role.EVENTADMIN,
+        )
         return Response({"id": obj.id, "level": "subsub"}, status=201)
 
     return Response({"error": "Invalid eventType. Use main | sub | subsub."}, status=400)
-
 
 @api_view(["DELETE"])
 @transaction.atomic
