@@ -5,6 +5,7 @@ from rest_framework.response import Response
 from rest_framework import status
 from .models import MainEvent, SubEvent, SubSubEvent
 from users.models import User, EventUserMapping  # adjust app label if different
+from rest_framework.permissions import IsAuthenticated
 
 
 @api_view(["POST"])
@@ -201,3 +202,54 @@ def get_events(request):
         })
 
     return Response(respData, status=status.HTTP_200_OK)
+
+def admin_data(request):
+    """
+    Return all events where the current user is mapped, with their role.
+    """
+    user = request.user
+    mappings = EventUserMapping.objects.filter(user=user).select_related(
+        "main_event", "sub_event", "sub_sub_event"
+    )
+
+    resp = []
+
+    for m in mappings:
+        if m.main_event:
+            resp.append({
+                "level": "main",
+                "id": m.main_event.id,
+                "eventId": m.main_event.event_id,
+                "name": m.main_event.name,
+                "description": m.main_event.description,
+                "isOpen": m.main_event.isOpen,
+                "role": m.user_role,
+            })
+        if m.sub_event:
+            resp.append({
+                "level": "sub",
+                "id": m.sub_event.id,
+                "eventId": m.sub_event.event_id,
+                "name": m.sub_event.name,
+                "description": m.sub_event.description,
+                "isOpen": m.sub_event.isOpen,
+                "role": m.user_role,
+                "parentId": m.sub_event.parent_event.id,
+                "parentName": m.sub_event.parent_event.name,
+            })
+        if m.sub_sub_event:
+            resp.append({
+                "level": "subsub",
+                "id": m.sub_sub_event.id,
+                "eventId": m.sub_sub_event.event_id,
+                "name": m.sub_sub_event.name,
+                "description": m.sub_sub_event.description,
+                "isOpen": m.sub_sub_event.isOpen,
+                "role": m.user_role,
+                "parentId": m.sub_sub_event.parent_event.id,
+                "parentName": m.sub_sub_event.parent_event.name,
+                "subParentId": m.sub_sub_event.parent_subevent.id,
+                "subParentName": m.sub_sub_event.parent_subevent.name,
+            })
+
+    return Response(resp, status=status.HTTP_200_OK)
