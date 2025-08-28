@@ -259,9 +259,19 @@ const ManageRolesModal = ({ isOpen, onClose, onSave, event, eventLevel }) => {
   const [roles, setRoles] = useState({ admins: [], managers: [] });
   const [newEmails, setNewEmails] = useState({ admins: '', managers: '' });
 
+  // fetch current mappings when modal opens
   useEffect(() => {
-    if (event) setRoles(event.roles || { admins: [], managers: [] });
-  }, [event]);
+    if (isOpen && event?.id) {
+      (async () => {
+        try {
+          const res = await api.get(`/events/get_event_users/${eventLevel}/${event.id}/`);
+          setRoles(res.data);
+        } catch (err) {
+          console.error("Failed to fetch event users", err);
+        }
+      })();
+    }
+  }, [isOpen, event, eventLevel]);
 
   if (!isOpen || !event) return null;
 
@@ -464,7 +474,11 @@ const AdminPage = () => {
 
   const handleSaveRoles = async (eventId, level, newRoles) => {
     try {
-      await api.post('/events/update_event_users/', { eventId, level, roles: newRoles });
+      await api.post(`/events/update_event_users/`, {
+        eventId: modalContext.id,
+        level: modalContext.level,
+        roles: newRoles
+      });
       setIsRolesModalOpen(false);
       fetchAdminData();
     } catch (error) {

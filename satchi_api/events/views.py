@@ -6,7 +6,7 @@ from rest_framework import status
 from .models import MainEvent, SubEvent, SubSubEvent
 from users.models import User, EventUserMapping  # adjust app label if different
 from rest_framework.permissions import IsAuthenticated
-
+from users.services.roles import promote_user_if_higher
 
 @api_view(["POST"])
 @transaction.atomic
@@ -124,7 +124,7 @@ def update_event_users(request):
     roles = data.get("roles", {})
     admins = {a["email"].strip().lower() for a in roles.get("admins", []) if a.get("email")}
     managers = {m["email"].strip().lower() for m in roles.get("managers", []) if m.get("email")}
-
+    print(admins, managers)
     # check conflicts
     conflicts = admins & managers
     if conflicts:
@@ -148,7 +148,7 @@ def update_event_users(request):
         admin_role, manager_role = None, User.Role.SUBSUBEVENTMANAGER
 
     # delete all old mappings for this event scope
-    EventUserMapping.objects.filter(**mapping_filter).delete()
+    EventUserMapping.objects.filter(**mapping_filter).exclude(user_role__in=[User.Role.SUPERADMIN]).delete()
 
     # recreate
     created = 0
@@ -156,6 +156,7 @@ def update_event_users(request):
         for email in admins:
             try:
                 user = User.objects.get(email=email)
+                promote_user_if_higher(user, admin_role)
                 EventUserMapping.objects.create(user=user, user_role=admin_role, **mapping_filter)
                 created += 1
             except User.DoesNotExist:
@@ -163,6 +164,7 @@ def update_event_users(request):
     for email in managers:
         try:
             user = User.objects.get(email=email)
+            promote_user_if_higher(user, manager_role)
             EventUserMapping.objects.create(user=user, user_role=manager_role, **mapping_filter)
             created += 1
         except User.DoesNotExist:
@@ -271,3 +273,32 @@ def admin_data(request):
             })
 
     return Response(resp, status=status.HTTP_200_OK)
+
+@api_view(["GET"])
+def get_event_users(request, level, event_id):
+    """
+    Return current admins & managers for a given event
+    """
+    level = level.lower()
+    if level == "main":
+        obj = get_object_or_404(MainEvent, pk=event_id)
+        mapping_filter = {"main_event": obj}
+    elif level == "sub":
+        obj = get_object_or_404(SubEvent, pk=event_id)
+        mapping_filter = {"sub_event": obj}
+    else:
+        obj = get_object_or_404(SubSubEvent, pk=event_id)
+        mapping_filter = {"sub_sub_event": obj}
+
+    mappings = EventUserMapping.objects.filter(**mapping_filter)
+    data = {
+        "admins": [
+            {"email": m.user.email, "name": m.user.get_full_name() or m.user.email.split("@")[0]}
+            for m in mappings if "ADMIN" in m.user_role
+        ],
+        "managers": [
+            {"email": m.user.email, "name": m.user.get_full_name() or m.user.email.split("@")[0]}
+            for m in mappings if "MANAGER" in m.user_role
+        ],
+    }
+    return Response(data, status=200)
