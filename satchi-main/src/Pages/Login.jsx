@@ -46,38 +46,42 @@ const Login = () => {
 
 
   return (
-    <div className="pt-12 my-40">
+    <div className="relative w-full min-h-screen flex items-center justify-center p-4 font-body text-gray-800">
+        {/* Themed Background */}
+        <div className="absolute inset-0 bg-gradient-to-br from-white via-amber-50 to-orange-100 z-0"></div>
+        <div className="absolute top-0 left-0 w-full h-full bg-grid-gray-200/[0.4] z-0"></div>
+
       <motion.div
         initial={{ opacity: 0, y: 50 }}
-        whileInView={{ opacity: 1, y: 0 }}
+        animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.8, ease: "easeInOut" }}
-        viewport={{ once: true }}
-        className="w-full max-w-md mx-auto backdrop-blur-md bg-white/5 border border-white/10 text-white shadow-xl rounded-xl p-8"
+        className="relative z-10 w-full max-w-md mx-auto bg-white/80 backdrop-blur-lg border border-gray-200/90 shadow-2xl rounded-2xl p-8"
       >
-        <h2 className="text-3xl font-semibold text-accent text-center mb-6">
+        <h2 className="text-3xl font-bold text-center mb-6 bg-gradient-to-r from-[#ff6a3c] to-[#df9400] bg-clip-text text-transparent">
           Login
         </h2>
 
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-          {error && <p className="text-red-400 text-center bg-red-500/10 p-2 rounded-md">{error}</p>}
+          {error && <p className="text-red-600 text-center bg-red-100 border border-red-300 p-3 rounded-lg text-sm">{error}</p>}
+          
           {/* Email Input */}
           <div className="flex flex-col">
-            <label htmlFor="email" className="mb-2 text-sm font-medium text-gray-300">Email Address</label>
+            <label htmlFor="email" className="mb-2 text-sm font-semibold text-gray-600">Email Address</label>
             <input
               type="email"
               id="email"
               value={email}
               onChange={handleEmailChange}
-              placeholder="e.g., yourname.amrita.edu"
+              placeholder="e.g., cb.en.u4cse21001@amrita.edu"
               required
-              className={`w-full px-4 py-2 rounded-md bg-black/20 text-white border ${emailError ? 'border-red-400' : 'border-white/20'} focus:outline-none focus:ring-2 focus:ring-accent`}
+              className={`w-full px-4 py-2 rounded-lg bg-gray-50 border ${emailError ? 'border-red-500' : 'border-gray-300'} focus:outline-none focus:ring-2 focus:ring-[#ff6a3c] focus:border-transparent transition`}
             />
-            {emailError && <p className="text-red-400 text-sm mt-1">{emailError}</p>}
+            {emailError && <p className="text-red-600 text-xs mt-1">{emailError}</p>}
           </div>
 
           {/* Password Input */}
           <div className="flex flex-col">
-            <label htmlFor="password" className="mb-2 text-sm font-medium text-gray-300">Password</label>
+            <label htmlFor="password" className="mb-2 text-sm font-semibold text-gray-600">Password</label>
             <input
               type="password"
               id="password"
@@ -85,22 +89,22 @@ const Login = () => {
               onChange={handlePasswordChange}
               placeholder="••••••••"
               required
-              className={`w-full px-4 py-2 rounded-md bg-black/20 text-white border ${passwordError ? 'border-red-400' : 'border-white/20'} focus:outline-none focus:ring-2 focus:ring-accent`}
+              className={`w-full px-4 py-2 rounded-lg bg-gray-50 border ${passwordError ? 'border-red-500' : 'border-gray-300'} focus:outline-none focus:ring-2 focus:ring-[#ff6a3c] focus:border-transparent transition`}
             />
-            {passwordError && <p className="text-red-400 text-sm mt-1">{passwordError}</p>}
+            {passwordError && <p className="text-red-600 text-xs mt-1">{passwordError}</p>}
           </div>
           
           <button
             type="submit"
             disabled={!isFormValid}
-            className="w-full bg-accent text-deepBlue hover:shadow-[0_0_20px_#FFAB00] font-bold py-2 px-4 rounded-md transition duration-300 ease-in-out mt-4 disabled:bg-gray-500 disabled:cursor-not-allowed"
+            className="w-full bg-[#ff6a3c] text-white hover:shadow-lg hover:shadow-orange-500/50 font-bold py-3 px-4 rounded-lg transition-all duration-300 ease-in-out mt-4 disabled:bg-gray-300 disabled:shadow-none disabled:cursor-not-allowed"
           >
             Login
           </button>
 
-          <p className="text-center text-gray-400 mt-4 text-sm">
+          <p className="text-center text-gray-600 mt-4 text-sm">
             Don't have an account?{" "}
-            <Link to="/signup" className="font-medium text-[#FF805A] hover:underline">
+            <Link to="/signup" className="font-semibold text-[#df9400] hover:underline hover:text-[#ff6a3c]">
               Sign Up
             </Link>
           </p>

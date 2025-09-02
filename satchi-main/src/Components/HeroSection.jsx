@@ -1,42 +1,32 @@
-import React, { useMemo } from "react";
+import React from "react";
 import { motion } from "framer-motion";
-import { NavLink } from "react-router-dom";
-import { useAuth } from "../context/AuthContext"; // 1. Import the useAuth hook
-
-const bgImages = [
-  "bg1.png",
-  "bg2.png",
-];
+import { useAuth } from "../context/AuthContext";
 
 const HeroSection = () => {
-  const { isAuthenticated } = useAuth(); // 2. Get the authentication status
-
-  const selectedImage = useMemo(() => {
-    const randomIndex = Math.floor(Math.random() * bgImages.length);
-    return `/images/wallpaper/${bgImages[randomIndex]}`;
-  }, []);
+  const { isAuthenticated } = useAuth(); // Get the authentication status
+  // const isAuthenticated = false; // Placeholder for demonstration
 
   return (
-    <section
-      id="hero"
-      className="relative min-h-screen w-full flex items-center justify-center text-white overflow-hidden bg-deepBlue font-body"
+    <section 
+      id="hero" 
+      className="relative min-h-screen w-full flex items-center justify-center text-gray-800 overflow-hidden font-body"
     >
-      {/* Background and Overlay */}
-      <div
-        className="absolute inset-0 bg-cover bg-center z-0"
-        style={{ backgroundImage: `url(${selectedImage})` }}
-      />
-      <div className="absolute inset-0 bg-gradient-to-br from-black/90 via-black/60 to-black/90 z-20" />
+      {/* Abstract Gradient Background */}
+      <div className="absolute inset-0 bg-amber-50 z-0"></div>
+      <div 
+            className="absolute top-0 left-0 w-full h-full bg-grid-gray-200/[0.4] z-0"
+            style={{
+            maskImage: 'radial-gradient(ellipse at center, transparent 20%, black)'
+            }}
+      ></div>
 
       {/* Main Content */}
-      <div className="relative z-30 text-center px-6 max-w-5xl">
+      <div className="relative z-10 text-center px-4 sm:px-6 max-w-5xl">
         <motion.h1
           initial={{ opacity: 0, y: 50 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 1 }}
-          className="text-4xl sm:text-5xl md:text-6xl font-heading font-bold mb-8 
-          text-transparent bg-gradient-to-r from-[#FFAB00] via-[#FF805A] to-[#FFAB00] 
-          bg-[length:300%] bg-clip-text animate-gradient-x drop-shadow-[#FFAB00]"
+          className="text-4xl sm:text-5xl md:text-6xl font-heading font-bold mb-6 text-transparent bg-gradient-to-r from-[#ff6a3c] via-[#df9400] to-[#ff6a3c] bg-clip-text [filter:drop-shadow(0_2px_2px_rgba(0,0,0,0.25))]"
         >
           Welcome to SATCHI
         </motion.h1>
@@ -45,7 +35,7 @@ const HeroSection = () => {
           initial={{ opacity: 0, y: 30 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 1, delay: 0.4 }}
-          className="mt-4 text-textLight text-base sm:text-lg leading-relaxed tracking-wide"
+          className="mt-4 text-gray-700 font-medium text-base sm:text-lg leading-relaxed tracking-wide max-w-2xl mx-auto [text-shadow:1px_1px_3px_rgba(255,255,255,0.5)]"
         >
           Join us at the ultimate tech fair! Register now to explore groundbreaking innovations, connect with industry leaders, and secure your spot at this unmissable event.
         </motion.p>
@@ -56,38 +46,44 @@ const HeroSection = () => {
           transition={{ duration: 1, delay: 0.6 }}
           className="mt-10 flex justify-center gap-6 flex-wrap"
         >
-          <NavLink
-            to="/events"
-            className="px-7 py-3 rounded-full text-sm sm:text-base font-semibold tracking-wide 
-            backdrop-blur-xl bg-white/10 border border-white/20 text-white 
-            hover:bg-white/20 hover:scale-105 hover:shadow-[0_0_10px_#FF805A]
-            transition duration-300 cursor-pointer"
+          <motion.div
+            whileHover={{ scale: 1.05, boxShadow: "0px 0px 20px rgba(255, 106, 60, 0.4)" }}
+            whileTap={{ scale: 0.95 }}
           >
-            Events
-          </NavLink>
-
-          {/* 3. Conditionally render Login or Profile button */}
-          {isAuthenticated ? (
-            <NavLink
-              to="/profile"
-              className="px-7 py-3 rounded-full text-sm sm:text-base font-semibold tracking-wide 
-              text-accent border border-accent bg-white/5 backdrop-blur-lg 
-              hover:bg-accent hover:text-deepBlue hover:scale-105 
-              hover:shadow-[0_0_20px_#FF805A] transition duration-300"
+            <a
+              href="/events"
+              className="px-8 py-3 rounded-lg text-sm sm:text-base font-semibold tracking-wide 
+              bg-[#ff6a3c] text-white
+              transition duration-300 cursor-pointer shadow-lg shadow-orange-500/30"
             >
-              View Profile
-            </NavLink>
-          ) : (
-            <NavLink
-              to="/login"
-              className="px-7 py-3 rounded-full text-sm sm:text-base font-semibold tracking-wide 
-              text-accent border border-accent bg-white/5 backdrop-blur-lg 
-              hover:bg-accent hover:text-deepBlue hover:scale-105 
-              hover:shadow-[0_0_20px_#FF805A] transition duration-300"
-            >
-              Login
-            </NavLink>
-          )}
+              Explore Events
+            </a>
+          </motion.div>
+          
+          <motion.div
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+          >
+            {isAuthenticated ? (
+              <a
+                href="/profile"
+                className="px-8 py-3 rounded-lg text-sm sm:text-base font-semibold tracking-wide 
+                bg-transparent border border-[#df9400] text-[#df9400]
+                hover:bg-[#df9400] hover:text-white transition duration-300"
+              >
+                View Profile
+              </a>
+            ) : (
+              <a
+                href="/login"
+                className="px-8 py-3 rounded-lg text-sm sm:text-base font-semibold tracking-wide 
+                bg-transparent border border-[#df9400] text-[#df9400]
+                hover:bg-[#df9400] hover:text-white transition duration-300"
+              >
+                Login / Register
+              </a>
+            )}
+          </motion.div>
         </motion.div>
       </div>
     </section>
@@ -95,3 +91,4 @@ const HeroSection = () => {
 };
 
 export default HeroSection;
+

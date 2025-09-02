@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { NavLink, useLocation, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { FaBars, FaTimes } from "react-icons/fa";
 import { useAuth } from "../context/AuthContext";
 
 const Header = () => {
@@ -29,6 +28,7 @@ const Header = () => {
   const menuItems = [
     { label: "Home", path: "/" },
     { label: "Events", path: "/events" },
+    { label: "Evaluate", path: "/evaluate" },
     // 4. Conditionally add the Admin link based on the isAdmin check
     ...(isAdmin ? [{ label: "Admin", path: "/admin" }] : []),
     ...(isAuthenticated
@@ -54,6 +54,19 @@ const Header = () => {
     return () => window.removeEventListener("scroll", checkHeroVisible);
   }, [location.pathname]);
 
+  // SVG Icons to avoid external dependencies
+  const MenuIcon = () => (
+    <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16m-7 6h7" />
+    </svg>
+  );
+
+  const CloseIcon = () => (
+    <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+    </svg>
+  );
+
   return (
     <AnimatePresence>
       {showHeader && (
@@ -62,28 +75,28 @@ const Header = () => {
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: -40 }}
           transition={{ duration: 0.5 }}
-          className="fixed top-0 left-0 right-0 z-50"
+          className="fixed top-0 left-0 right-0 z-50 font-body"
         >
           <div
-            className="w-[90%] max-w-7xl mx-auto mt-6 rounded-full px-6 py-3 
-                       backdrop-blur-md bg-white/5 border border-white/10 
-                       text-white shadow-xl flex items-center justify-between"
+            className="w-[95%] max-w-7xl mx-auto mt-4 rounded-2xl px-6 py-3 
+                       backdrop-blur-lg bg-white/80 border border-gray-200/90
+                       text-gray-800 shadow-md flex items-center justify-between"
           >
             <a href="/">
               <img src="/images/Satchi_main_logo.png" alt="Satchi Logo" className="h-8" />
             </a>
             
             {/* Desktop Menu */}
-            <ul className="hidden lg:flex items-center gap-4 text-sm font-medium">
+            <ul className="hidden lg:flex items-center gap-2 text-sm font-semibold">
               {menuItems.map((item) => (
                 <li key={item.label}>
                   <NavLink
                     to={item.path}
                     className={({ isActive }) =>
-                      `px-4 py-1 rounded-full transition cursor-pointer ${
+                      `px-4 py-2 rounded-lg transition-colors duration-300 ${
                         isActive
-                          ? "bg-accent text-deepBlue font-semibold"
-                          : "hover:bg-accent/30 hover:text-accent"
+                          ? "bg-[#ff6a3c] text-white shadow-sm"
+                          : "hover:bg-orange-100/70 text-gray-600"
                       }`
                     }
                   >
@@ -95,7 +108,7 @@ const Header = () => {
                 <li>
                   <button
                     onClick={handleLogout}
-                    className="px-4 py-1 rounded-full transition cursor-pointer hover:bg-red-500/30 hover:text-red-400"
+                    className="px-4 py-2 rounded-lg transition-colors duration-300 hover:bg-red-100/70 text-gray-600 hover:text-red-500"
                   >
                     Logout
                   </button>
@@ -106,9 +119,9 @@ const Header = () => {
             {/* Mobile Menu Toggle */}
             <button
               onClick={() => setMobileOpen(!mobileOpen)}
-              className="lg:hidden text-xl"
+              className="lg:hidden text-gray-600"
             >
-              {mobileOpen ? <FaTimes /> : <FaBars />}
+              {mobileOpen ? <CloseIcon /> : <MenuIcon />}
             </button>
           </div>
 
@@ -116,17 +129,17 @@ const Header = () => {
           <AnimatePresence>
             {mobileOpen && (
               <motion.div
-                initial={{ opacity: 0, y: -10 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -10 }}
-                className="w-[90%] max-w-7xl mx-auto mt-2 lg:hidden bg-black/90 backdrop-blur-md p-4 rounded-xl space-y-2 text-sm shadow-xl border border-white/10"
+                initial={{ opacity: 0, y: -10, height: 0 }}
+                animate={{ opacity: 1, y: 0, height: 'auto' }}
+                exit={{ opacity: 0, y: -10, height: 0 }}
+                className="w-[95%] max-w-7xl mx-auto mt-2 lg:hidden bg-white/95 backdrop-blur-lg p-4 rounded-xl space-y-2 text-sm shadow-lg border border-gray-200/90"
               >
                 {menuItems.map((item) => (
                    <NavLink
                       key={item.path}
                       to={item.path}
                       onClick={() => setMobileOpen(false)}
-                      className="block px-4 py-2 rounded hover:bg-accent/30 hover:text-accent font-semibold"
+                      className="block px-4 py-2 rounded-lg hover:bg-orange-100/70 font-semibold text-gray-600"
                     >
                       {item.label}
                     </NavLink>
@@ -137,7 +150,7 @@ const Header = () => {
                       handleLogout();
                       setMobileOpen(false);
                     }}
-                    className="block w-full text-left px-4 py-2 rounded hover:bg-red-500/30 hover:text-red-400 font-semibold"
+                    className="block w-full text-left px-4 py-2 rounded-lg hover:bg-red-100/70 font-semibold text-red-500"
                   >
                     Logout
                   </button>
@@ -152,3 +165,4 @@ const Header = () => {
 };
 
 export default Header;
+

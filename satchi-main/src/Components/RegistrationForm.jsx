@@ -136,7 +136,7 @@ const RegistrationForm = ({ eventId, minTeamSize = 1, maxTeamSize = 10, isFacult
                                 value={facultyMentorName}
                                 onChange={(e) => setFacultyMentorName(e.target.value)}
                                 placeholder="Enter mentor's full name"
-                                className="w-full pl-10 pr-4 py-2 rounded-md bg-black/20 text-white border border-white/10 focus:outline-none"
+                                className="w-full pl-10 pr-4 py-2 rounded-md bg-darkBg/20 text-white border border-white/10 focus:outline-none"
                             />
                         </div>
                         {isFacultyMentorRequired && <p className="text-xs text-yellow-400 mt-1">Note: A faculty mentor is recommended for this event.</p>}

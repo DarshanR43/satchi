@@ -54,7 +54,7 @@ const Registration = () => {
     }, [eventId]);
 
     return (
-        <div className="relative w-full min-h-screen px-6 pb-20 pt-24 text-white font-body overflow-hidden bg-black">
+        <div className="relative w-full min-h-screen px-6 pb-20 pt-24 text-white font-body overflow-hidden bg-darkBg">
             {loading && (
                 <div className="flex justify-center items-center py-10">
                     <Loader className="animate-spin text-accent" size={40} />

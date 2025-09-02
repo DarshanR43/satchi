@@ -1,93 +1,68 @@
 import React, { useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { User, Mail, Phone, Hash, Building, Briefcase, Calendar, ChevronDown, UserCheck, CheckCircle, GraduationCap, BookOpenCheck, School, Lock, Eye, EyeOff, WandSparkles } from 'lucide-react';
+import { User, Mail, Phone, Hash, School, Briefcase, Calendar, ChevronDown, UserCheck, CheckCircle, GraduationCap, BookOpenCheck, Lock, Eye, EyeOff, WandSparkles } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 
-// --- Reusable Component for Form Inputs ---
+// --- Reusable Themed Form Components ---
 const InputField = ({ name, type = 'text', placeholder, icon, error, value, onChange, className = '' }) => (
     <div className={`relative ${className}`}>
-        <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none z-10">
-            {icon}
-        </div>
+        <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none z-10">{icon}</div>
         <input
-            type={type}
-            name={name}
-            value={value}
-            onChange={onChange}
-            placeholder={placeholder}
-            className={`w-full p-3 pl-12 rounded-lg bg-gray-900/50 border backdrop-blur-sm ${error ? 'border-red-500/50' : 'border-white/10'} focus:ring-2 focus:ring-accent focus:border-accent transition-all duration-300 outline-none focus:shadow-[0_0_15px_rgba(255,107,59,0.5)]`}
+            type={type} name={name} value={value} onChange={onChange} placeholder={placeholder}
+            className={`w-full p-3 pl-12 rounded-lg bg-gray-50 border ${error ? 'border-red-500' : 'border-gray-300'} focus:ring-2 focus:ring-[#ff6a3c] focus:border-transparent transition-all duration-300 outline-none`}
         />
         <AnimatePresence>
-            {error && <motion.p initial={{opacity: 0, y: -5}} animate={{opacity: 1, y: 0}} exit={{opacity: 0}} className="text-red-400 text-xs mt-1 ml-2">{error}</motion.p>}
+            {error && <motion.p initial={{opacity: 0, y: -5}} animate={{opacity: 1, y: 0}} exit={{opacity: 0}} className="text-red-600 text-xs mt-1 ml-2">{error}</motion.p>}
         </AnimatePresence>
     </div>
 );
 
-// --- Reusable Component for Password Inputs ---
 const PasswordField = ({ name, placeholder, icon, error, value, onChange, onGenerateClick, isGenerating, className = '' }) => {
     const [showPassword, setShowPassword] = useState(false);
     return (
         <div className={`relative ${className}`}>
-            <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none z-10">
-                {icon}
-            </div>
+            <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none z-10">{icon}</div>
             <input
-                type={showPassword ? 'text' : 'password'}
-                name={name}
-                value={value}
-                onChange={onChange}
-                placeholder={placeholder}
-                className={`w-full p-3 pl-12 pr-24 rounded-lg bg-gray-900/50 border backdrop-blur-sm ${error ? 'border-red-500/50' : 'border-white/10'} focus:ring-2 focus:ring-accent focus:border-accent transition-all duration-300 outline-none focus:shadow-[0_0_15px_rgba(255,107,59,0.5)]`}
+                type={showPassword ? 'text' : 'password'} name={name} value={value} onChange={onChange} placeholder={placeholder}
+                className={`w-full p-3 pl-12 pr-24 rounded-lg bg-gray-50 border ${error ? 'border-red-500' : 'border-gray-300'} focus:ring-2 focus:ring-[#ff6a3c] focus:border-transparent transition-all duration-300 outline-none`}
             />
-             <div className="absolute inset-y-0 right-0 pr-2 flex items-center z-10">
+            <div className="absolute inset-y-0 right-0 pr-2 flex items-center z-10">
                 {onGenerateClick && (
-                     <button type="button" onClick={onGenerateClick} disabled={isGenerating} className="p-2 text-gray-400 hover:text-accent disabled:opacity-50 disabled:cursor-wait">
-                         {isGenerating ? <motion.div animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 1, ease: "linear" }}><WandSparkles size={20} /></motion.div> : <WandSparkles size={20} />}
-                     </button>
+                    <button type="button" onClick={onGenerateClick} disabled={isGenerating} className="p-2 text-gray-400 hover:text-[#ff6a3c] disabled:opacity-50 disabled:cursor-wait">
+                        {isGenerating ? <motion.div animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 1, ease: "linear" }}><WandSparkles size={20} /></motion.div> : <WandSparkles size={20} />}
+                    </button>
                 )}
-                <button
-                    type="button"
-                    onClick={() => setShowPassword(!showPassword)}
-                    className="p-2 text-gray-400 hover:text-accent"
-                >
+                <button type="button" onClick={() => setShowPassword(!showPassword)} className="p-2 text-gray-400 hover:text-[#ff6a3c]">
                     {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
                 </button>
             </div>
             <AnimatePresence>
-                {error && <motion.p initial={{opacity: 0, y: -5}} animate={{opacity: 1, y: 0}} exit={{opacity: 0}} className="text-red-400 text-xs mt-1 ml-2">{error}</motion.p>}
+                {error && <motion.p initial={{opacity: 0, y: -5}} animate={{opacity: 1, y: 0}} exit={{opacity: 0}} className="text-red-600 text-xs mt-1 ml-2">{error}</motion.p>}
             </AnimatePresence>
         </div>
     );
 };
 
-
-// --- Reusable Component for Select Dropdowns ---
 const SelectField = ({ name, placeholder, icon, error, value, onChange, options, disabled = false, className = '' }) => (
-     <div className={`relative ${className}`}>
-        <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none z-10">
-            {icon}
-        </div>
+    <div className={`relative ${className}`}>
+        <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none z-10">{icon}</div>
         <select
-            name={name}
-            value={value}
-            onChange={onChange}
-            disabled={disabled}
-            className={`w-full p-3 pl-12 pr-10 rounded-lg appearance-none bg-gray-900/50 border backdrop-blur-sm ${error ? 'border-red-500/50' : 'border-white/10'} focus:ring-2 focus:ring-accent focus:border-accent transition-all duration-300 outline-none focus:shadow-[0_0_15px_rgba(255,107,59,0.5)] disabled:opacity-50 disabled:cursor-not-allowed`}
+            name={name} value={value} onChange={onChange} disabled={disabled}
+            className={`w-full p-3 pl-12 pr-10 rounded-lg appearance-none bg-gray-50 border ${error ? 'border-red-500' : 'border-gray-300'} focus:ring-2 focus:ring-[#ff6a3c] focus:border-transparent transition-all duration-300 outline-none disabled:opacity-50 disabled:cursor-not-allowed`}
         >
             <option value="" disabled>{placeholder}</option>
-            {options.map(opt => <option key={opt} value={opt} className="bg-gray-800">{opt}</option>)}
+            {options.map(opt => <option key={opt} value={opt} className="bg-white">{opt}</option>)}
         </select>
-        <div className="absolute inset-y-0 right-0 pr-4 flex items-center pointer-events-none">
-            <ChevronDown className="text-gray-400" size={20} />
-        </div>
+        <div className="absolute inset-y-0 right-0 pr-4 flex items-center pointer-events-none"><ChevronDown className="text-gray-400" size={20} /></div>
         <AnimatePresence>
-            {error && <motion.p initial={{opacity: 0, y: -5}} animate={{opacity: 1, y: 0}} exit={{opacity: 0}} className="text-red-400 text-xs mt-1 ml-2">{error}</motion.p>}
+            {error && <motion.p initial={{opacity: 0, y: -5}} animate={{opacity: 1, y: 0}} exit={{opacity: 0}} className="text-red-600 text-xs mt-1 ml-2">{error}</motion.p>}
         </AnimatePresence>
     </div>
 );
 
 
 const SignupPage = () => {
-    // --- Hierarchical Data Structure for Schools, Degrees, and Courses ---
+    const navigate = useNavigate();
     const schoolData = {
       "Amrita International Law": {
         "B.A., LL.B. (Hons.)": { years: 5 },
@@ -148,18 +123,13 @@ const SignupPage = () => {
       },
     };
 
-    const initialFormData = {
-        fullName: '', email: '', password: '', confirmPassword: '', phone: '', school: '',
-        degree: '', course: '', rollNo: '', sex: '', currentYear: '', position: ''
-    };
-
+    const initialFormData = { fullName: '', email: '', password: '', confirmPassword: '', phone: '', school: '', degree: '', course: '', rollNo: '', sex: '', currentYear: '', position: '' };
     const [userType, setUserType] = useState('student');
     const [formData, setFormData] = useState(initialFormData);
     const [errors, setErrors] = useState({});
     const [isSuccess, setIsSuccess] = useState(false);
     const [isGeneratingPassword, setIsGeneratingPassword] = useState(false);
 
-    // --- Memoized options for dependent dropdowns ---
     const schoolOptions = Object.keys(schoolData);
     const degreeOptions = useMemo(() => formData.school ? Object.keys(schoolData[formData.school]).map(d => d.split(' in ')[0]).filter((v, i, a) => a.indexOf(v) === i) : [], [formData.school]);
     const courseOptions = useMemo(() => {
@@ -172,7 +142,6 @@ const SignupPage = () => {
         if (!years) return [];
         return Array.from({ length: years }, (_, i) => `${i + 1}${i === 0 ? 'st' : i === 1 ? 'nd' : i === 2 ? 'rd' : 'th'} Year`);
     }, [formData.course, formData.school]);
-
 
     const handleInputChange = (e) => {
         const { name, value } = e.target;
@@ -242,8 +211,6 @@ const SignupPage = () => {
 
     const handleSubmit = async (e) => {
         e.preventDefault();
-
-        // Reset success and errors
         setIsSuccess(false);
         setErrors({});
 
@@ -291,85 +258,58 @@ const SignupPage = () => {
 
 
     return (
-        <div className="relative my-20 w-full min-h-screen px-4 sm:px-6 lg:px-8 flex items-center justify-center text-white font-body overflow-hidden">
-            <div className="absolute inset-0 -z-10 h-full w-full bg-black">
-                <div className="absolute bottom-0 left-0 right-0 top-0 bg-[linear-gradient(to_right,#4f4f4f2e_1px,transparent_1px),linear-gradient(to_bottom,#4f4f4f2e_1px,transparent_1px)] bg-[size:3rem_3rem] [mask-image:radial-gradient(ellipse_80%_50%_at_50%_0%,#000_70%,transparent_110%)]"></div>
-                <div className="absolute inset-0 bg-[radial-gradient(circle_500px_at_50%_200px,#3e3e3e,transparent)]"></div>
-            </div>
+        <div className="relative w-full min-h-screen px-4 sm:px-6 flex items-center justify-center font-body text-gray-800 py-20">
+            <div className="absolute inset-0 z-0 bg-gradient-to-br from-white via-amber-50 to-orange-100"></div>
+            <div className="absolute inset-0 z-0 bg-grid-gray-200/[0.4]"></div>
 
             <motion.div 
                 initial={{ opacity: 0, y: 50, scale: 0.95 }}
                 animate={{ opacity: 1, y: 0, scale: 1 }}
                 transition={{ duration: 0.7, ease: "easeOut" }}
-                className="relative z-10 w-full max-w-5xl p-8 space-y-6 bg-black/30 border border-white/10 rounded-2xl backdrop-blur-xl shadow-2xl shadow-accent/10"
+                className="relative z-10 w-full max-w-4xl p-8 space-y-6 bg-white/80 border border-gray-200/90 rounded-3xl backdrop-blur-lg shadow-2xl"
             >
                 <div className="text-center">
-                    <h1 className="text-4xl font-bold bg-gradient-to-r from-accent to-vibrant bg-clip-text text-transparent">Create Account</h1>
-                    <p className="text-gray-400 mt-2">Join the Amrita event ecosystem.</p>
+                    <h1 className="text-4xl font-heading font-bold bg-gradient-to-r from-[#ff6a3c] via-[#df9400] to-[#ff6a3c] bg-clip-text text-transparent">Create an Account</h1>
+                    <p className="text-gray-600 mt-2">Join the Satchi Tech Fest ecosystem.</p>
                 </div>
 
-                <div className="flex bg-black/40 rounded-lg p-1 border border-white/10">
-                    <button 
-                        onClick={() => handleUserTypeChange('student')} 
-                        className={`w-1/2 p-2 rounded-md text-sm font-semibold transition-colors duration-300 ${userType === 'student' ? 'bg-accent text-black' : 'text-white'}`}
-                    >
-                        Student
+                <div className="flex bg-gray-100 rounded-lg p-1 border border-gray-200/90">
+                    <button onClick={() => handleUserTypeChange('student')} className={`relative w-1/2 p-2 rounded-md text-sm font-semibold transition-colors duration-300 ${userType !== 'student' ? 'text-gray-600' : ''}`}>
+                        {userType === 'student' && <motion.div layoutId="userTypePill" className="absolute inset-0 bg-white shadow-md rounded-md z-0"></motion.div>}
+                        <span className="relative z-10">Student</span>
                     </button>
-                    <button 
-                        onClick={() => handleUserTypeChange('faculty')} 
-                        className={`w-1/2 p-2 rounded-md text-sm font-semibold transition-colors duration-300 ${userType === 'faculty' ? 'bg-accent text-black' : 'text-white'}`}
-                    >
-                        Faculty
+                    <button onClick={() => handleUserTypeChange('faculty')} className={`relative w-1/2 p-2 rounded-md text-sm font-semibold transition-colors duration-300 ${userType !== 'faculty' ? 'text-gray-600' : ''}`}>
+                        {userType === 'faculty' && <motion.div layoutId="userTypePill" className="absolute inset-0 bg-white shadow-md rounded-md z-0"></motion.div>}
+                        <span className="relative z-10">Faculty</span>
                     </button>
                 </div>
 
                 <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <AnimatePresence>
                         {isSuccess && (
-                             <motion.div
-                                initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }}
-                                className="md:col-span-2 bg-green-500/10 border border-green-500/30 text-green-300 p-3 rounded-lg text-center flex items-center justify-center gap-2"
-                            >
-                                <CheckCircle size={20} /><span>Signup successful!</span>
+                            <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="md:col-span-2 bg-green-100 border border-green-300 text-green-800 p-3 rounded-lg text-center flex items-center justify-center gap-2">
+                                <CheckCircle size={20} /><span>Signup successful! Redirecting to login...</span>
                             </motion.div>
                         )}
                     </AnimatePresence>
 
                     <InputField name="fullName" placeholder="Full Name" icon={<User className="text-gray-400" size={20} />} error={errors.fullName} value={formData.fullName} onChange={handleInputChange} />
                     <InputField name="email" type="email" placeholder="Amrita Email Address" icon={<Mail className="text-gray-400" size={20} />} error={errors.email} value={formData.email} onChange={handleInputChange} />
-                    <PasswordField 
-                        name="password" 
-                        placeholder="Password" 
-                        icon={<Lock className="text-gray-400" size={20} />} 
-                        error={errors.password} 
-                        value={formData.password} 
-                        onChange={handleInputChange} 
-                        isGenerating={isGeneratingPassword}
-                    />
+                    <PasswordField name="password" placeholder="Password" icon={<Lock className="text-gray-400" size={20} />} error={errors.password} value={formData.password} onChange={handleInputChange} isGenerating={isGeneratingPassword}/>
                     <PasswordField name="confirmPassword" placeholder="Confirm Password" icon={<Lock className="text-gray-400" size={20} />} error={errors.confirmPassword} value={formData.confirmPassword} onChange={handleInputChange} />
                     <InputField name="phone" type="tel" placeholder="10-Digit Phone Number" icon={<Phone className="text-gray-400" size={20} />} error={errors.phone} value={formData.phone} onChange={handleInputChange} />
                     
                     {userType === 'student' && <InputField name="rollNo" placeholder="Roll Number" icon={<Hash className="text-gray-400" size={20} />} error={errors.rollNo} value={formData.rollNo} onChange={handleInputChange} />}
                     
                     <AnimatePresence mode="wait">
-                        <motion.div
-                            key={userType}
-                            initial={{ opacity: 0, y: -10 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            exit={{ opacity: 0, y: 10 }}
-                            transition={{ duration: 0.3 }}
-                            className="contents"
-                        >
+                        <motion.div key={userType} initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 10 }} transition={{ duration: 0.3 }} className="contents">
                             {userType === 'student' && (
                                 <>
                                     <SelectField name="school" placeholder="Select School" icon={<School className="text-gray-400" size={20} />} error={errors.school} value={formData.school} onChange={handleInputChange} options={schoolOptions} className="md:col-span-2" />
                                     <SelectField name="degree" placeholder="Select Degree" icon={<GraduationCap className="text-gray-400" size={20} />} error={errors.degree} value={formData.degree} onChange={handleInputChange} options={degreeOptions} disabled={!formData.school} />
                                     <SelectField name="course" placeholder="Select Course" icon={<BookOpenCheck className="text-gray-400" size={20} />} error={errors.course} value={formData.course} onChange={handleInputChange} options={courseOptions} disabled={!formData.degree} />
                                     <SelectField name="sex" placeholder="Select Sex" icon={<UserCheck className="text-gray-400" size={20} />} error={errors.sex} value={formData.sex} onChange={handleInputChange} options={['Male', 'Female', 'Other']} />
-                                    
-                                    {yearOptions.length > 0 && (
-                                        <SelectField name="currentYear" placeholder="Current Year" icon={<Calendar className="text-gray-400" size={20} />} error={errors.currentYear} value={formData.currentYear} onChange={handleInputChange} options={yearOptions} disabled={!formData.course} />
-                                    )}
+                                    {yearOptions.length > 0 && <SelectField name="currentYear" placeholder="Current Year" icon={<Calendar className="text-gray-400" size={20} />} error={errors.currentYear} value={formData.currentYear} onChange={handleInputChange} options={yearOptions} disabled={!formData.course} />}
                                 </>
                             )}
                             {userType === 'faculty' && (
@@ -381,18 +321,13 @@ const SignupPage = () => {
                         </motion.div>
                     </AnimatePresence>
                     
-                    <motion.button 
-                        whileHover={{ scale: 1.02 }}
-                        whileTap={{ scale: 0.98 }}
-                        type="submit" 
-                        className="w-full p-3 rounded-lg bg-gradient-to-r from-accent to-vibrant text-black font-bold text-lg hover:shadow-lg hover:shadow-accent/40 transition-all duration-300 md:col-span-2"
-                    >
+                    <motion.button whileHover={{ scale: 1.02, boxShadow: "0px 10px 25px -10px rgba(255, 106, 60, 0.6)" }} whileTap={{ scale: 0.98 }} type="submit" className="w-full p-3 rounded-lg bg-[#ff6a3c] text-white font-bold text-lg transition-all duration-300 md:col-span-2">
                         Sign Up
                     </motion.button>
                 </form>
 
-                <p className="text-center text-sm text-gray-400">
-                    Already have an account? <a href="/login" className="font-semibold text-accent hover:text-vibrant">Log In</a>
+                <p className="text-center text-sm text-gray-600">
+                    Already have an account? <a href="/login" className="font-semibold text-[#df9400] hover:text-[#ff6a3c] hover:underline">Log In</a>
                 </p>
             </motion.div>
         </div>
