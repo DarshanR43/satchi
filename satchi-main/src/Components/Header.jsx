@@ -28,7 +28,7 @@ const Header = () => {
   const menuItems = [
     { label: "Home", path: "/" },
     { label: "Events", path: "/events" },
-    { label: "Evaluate", path: "/evaluate" },
+    // { label: "Evaluate", path: "/evaluate" },
     // 4. Conditionally add the Admin link based on the isAdmin check
     ...(isAdmin ? [{ label: "Admin", path: "/admin" }] : []),
     ...(isAuthenticated
