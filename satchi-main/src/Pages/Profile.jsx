@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion } from 'framer-motion';
-// import { useAuth } from '../context/AuthContext'; // This will be used in your actual project
+import { useAuth } from '../context/AuthContext'; // This will be used in your actual project
 import { Navigate } from 'react-router-dom';
 import { User, Mail, Phone, School, GraduationCap, BookOpen, Hash, Briefcase, Calendar, UserCheck } from 'lucide-react';
 
@@ -18,23 +18,6 @@ const ProfileDetail = ({ icon, label, value }) => {
 };
 
 const ProfilePage = () => {
-    // A placeholder hook to provide auth context since the original file cannot be resolved.
-    const useAuth = () => ({
-        isAuthenticated: true,
-        user: {
-            full_name: 'Satchi User',
-            email: 'satchi.user@amrita.edu',
-            phone: '9876543210',
-            role: 'Student',
-            school: 'Amrita School of Engineering',
-            degree: 'B.Tech',
-            course: 'Computer Science and Engineering',
-            roll_no: 'CB.EN.U4CSE21001',
-            current_year: '3',
-            position: null, // This won't be rendered as it's null
-        }
-    });
-
     const { user, isAuthenticated } = useAuth();
 
     // If the user is not authenticated, redirect to the login page
