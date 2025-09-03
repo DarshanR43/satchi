@@ -302,3 +302,24 @@ def get_event_users(request, level, event_id):
         ],
     }
     return Response(data, status=200)
+
+@api_view(["GET"])
+def getSubSubEventDetails(request, event_id):
+    """
+    Return details for a specific event
+    """
+    obj = get_object_or_404(SubSubEvent, pk=event_id)
+    data = {
+        "id": obj.id,
+        "eventId": obj.event_id,
+        "name": obj.name,
+        "description": obj.description,
+        "isOpen": obj.isOpen,
+        "rules": obj.rules,
+        "minTeamSize": obj.minTeamSize,
+        "maxTeamSize": obj.maxTeamSize,
+        "minFemaleParticipants": obj.minFemaleParticipants,
+        "isFacultyMentorRequired": obj.isFacultyMentorRequired,
+    }
+    
+    return Response(data, status=200)
