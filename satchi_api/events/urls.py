@@ -8,5 +8,6 @@ urlpatterns = [
     path("get_event_users/<str:level>/<int:event_id>/", views.get_event_users, name="get_event_users"),
     path('delete_event/<str:level>/<int:pk>/', views.delete_event, name='delete_event'),
     path('admin-data/', views.admin_data, name='admin_data'),
-    path('details/<int:event_id>/', views.getSubSubEventDetails, name='get_event_details')
+    path('details/<int:event_id>/', views.getSubSubEventDetails, name='get_event_details'),
+    path('toggle_status/<str:level>/<int:eventid>/', views.openStateEvent, name='toggle_event_status'),
 ]

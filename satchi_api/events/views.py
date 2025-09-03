@@ -321,5 +321,27 @@ def getSubSubEventDetails(request, event_id):
         "minFemaleParticipants": obj.minFemaleParticipants,
         "isFacultyMentorRequired": obj.isFacultyMentorRequired,
     }
-    
+
     return Response(data, status=200)
+
+@api_view(["POST"])
+@transaction.atomic
+def openStateEvent(request,level,eventid):
+    if level == "main":
+        obj = get_object_or_404(MainEvent, pk=eventid)
+    elif level == "sub":
+        obj = get_object_or_404(SubEvent, pk=eventid)
+    else:
+        obj = get_object_or_404(SubSubEvent, pk=eventid)
+
+    if obj.isOpen == True:
+        obj.isOpen = False
+        obj.save()
+    else:
+        obj.isOpen = True
+        obj.save()
+
+    return Response({"status": "success"}, status=200)
+
+
+
