@@ -2,7 +2,6 @@ import React from "react";
 import { motion } from "framer-motion";
 import { Users, Zap, Lightbulb } from 'lucide-react';
 
-// A custom hook for animating numbers
 const useAnimatedCounter = (target, duration = 2) => {
   const [count, setCount] = React.useState(0);
 
@@ -11,8 +10,7 @@ const useAnimatedCounter = (target, duration = 2) => {
     const end = parseInt(target);
     if (start === end) return;
 
-    // Adjust increment time to prevent super fast animations for large numbers
-    const totalSteps = duration * 60; // Assuming 60fps
+    const totalSteps = duration * 60;
     const increment = Math.max(1, Math.floor(end / totalSteps));
     const incrementTime = (duration * 1000) / (end / increment);
 
@@ -38,7 +36,7 @@ const StatCard = ({ icon, value, label, duration }) => {
     const animatedValue = useAnimatedCounter(value, duration);
     return (
         <motion.div 
-            className="flex flex-col items-center text-center p-6 bg-white/70 backdrop-blur-sm rounded-2xl border border-gray-200 shadow-lg"
+            className="flex flex-col items-center text-center p-6 bg-[radial-gradient(ellipse_at_center,var(--tw-gradient-stops))] from-[#fef5e4ff] to-white opacity-75 backdrop-blur-sm rounded-2xl"
             initial={{ opacity: 0, scale: 0.9 }}
             whileInView={{ opacity: 1, scale: 1 }}
             transition={{ duration: 0.5, delay: 0.4 }}
@@ -55,8 +53,7 @@ const StatCard = ({ icon, value, label, duration }) => {
 const AboutUsSection = () => {
   return (
     <section id="about" className="relative w-full mx-auto py-24 px-6 text-gray-800 overflow-hidden">
-        {/* Abstract Gradient Background */}
-        <div className="absolute inset-0 bg-amber-50 z-0"></div>
+        <div className="absolute inset-0 bg-white z-0"></div>
         <div 
             className="absolute top-0 left-0 w-full h-full bg-grid-gray-200/[0.4] z-0"
             style={{
@@ -84,7 +81,7 @@ const AboutUsSection = () => {
                      transition={{ duration: 0.8, delay: 0.2 }}
                      viewport={{ once: true }}
                 >
-                    <div className="bg-white/70 border border-gray-200 rounded-2xl p-8 backdrop-blur-lg shadow-xl">
+                    <div className="bg-[radial-gradient(ellipse_at_center,var(--tw-gradient-stops))] from-[#fef5e4ff] rounded-2xl p-8 backdrop-blur-lg">
                         <p className="text-lg leading-relaxed text-gray-600">
                             The Anokha Tech Fair is a vibrant and highly anticipated exhibition, a core part of Anokha, the national-level technical festival of Amrita Vishwa Vidyapeetham, Coimbatore. It's a melting pot of innovation, creativity, and technological prowess.
                         </p>

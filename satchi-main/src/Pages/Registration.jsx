@@ -3,11 +3,10 @@ import { useParams } from 'react-router-dom';
 import axios from 'axios';
 import { motion } from 'framer-motion';
 import { Loader, AlertTriangle, BookOpen, User, Mail, Phone, Users, UserPlus, UserMinus, FileText, Briefcase } from 'lucide-react';
-import { useAuth } from '../context/AuthContext'; // This will be used in your actual project
+import { useAuth } from '../context/AuthContext';
 
-const API_URL = 'http://127.0.0.1:8000'; // Replaced import.meta.env for compatibility
+const API_URL = 'http://127.0.0.1:8000';
 
-// --- Helper function to get CSRF token ---
 function getCookie(name) {
   let cookieValue = null;
   if (document.cookie && document.cookie !== '') {
@@ -23,7 +22,6 @@ function getCookie(name) {
   return cookieValue;
 }
 
-// --- Registration Form Component (Themed) ---
 const RegistrationForm = ({ event }) => {
 
     const { user } = useAuth();
@@ -188,7 +186,6 @@ const RegistrationForm = ({ event }) => {
     );
 };
 
-// --- Main Registration Page Component (Themed) ---
 const EventRules = ({ event }) => (
     <motion.div
         initial={{ opacity: 0, y: -20 }}

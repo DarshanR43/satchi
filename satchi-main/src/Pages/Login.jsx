@@ -1,28 +1,27 @@
 import React, { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import { Link, useNavigate } from "react-router-dom";
-import { useAuth } from "../context/AuthContext"; // Import the useAuth hook
+import { useAuth } from "../context/AuthContext";
 
 const Login = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const navigate = useNavigate();
-  const { login } = useAuth(); // Get the login function from context
+  const { login } = useAuth();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setError(""); // Clear previous errors
+    setError("");
     try {
       await login(email, password);
-      navigate("/profile"); // Navigate to profile page on successful login
+      navigate("/profile");
     } catch (err) {
       setError("Login failed. Please check your credentials.");
       console.error("Error during login:", err);
     }
   };
 
-  // The rest of your validation logic can remain the same
   const [emailError, setEmailError] = useState("");
   const [passwordError, setPasswordError] = useState('');
   const [isFormValid, setIsFormValid] = useState(false);
@@ -47,7 +46,6 @@ const Login = () => {
 
   return (
     <div className="relative w-full min-h-screen flex items-center justify-center p-4 font-body text-gray-800">
-        {/* Themed Background */}
         <div className="absolute inset-0 bg-gradient-to-br from-white via-amber-50 to-orange-100 z-0"></div>
         <div className="absolute top-0 left-0 w-full h-full bg-grid-gray-200/[0.4] z-0"></div>
 

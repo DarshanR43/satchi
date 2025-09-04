@@ -1,13 +1,11 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Plus, ChevronDown, Edit, Trash2, X, CheckSquare, Square, AlertTriangle, Users, Power } from 'lucide-react'; // Added Power icon
+import { Plus, ChevronDown, Edit, Trash2, X, CheckSquare, Square, AlertTriangle, Users, Power } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { Navigate } from 'react-router-dom';
 import axios from 'axios';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000';
-
-// --- Reusable Modals (Themed) ---
 
 const ConfirmationModal = ({ isOpen, onClose, onConfirm, title, message }) => {
   if (!isOpen) return null;
@@ -76,17 +74,74 @@ const AddEventModal = ({ isOpen, onClose, onSave, allEvents, creationContext = {
   };
 
   return (
-    <motion.div className="fixed inset-0 bg-gray-900/60 backdrop-blur-sm flex items-center justify-center z-50 p-4" onClick={onClose}>
+    <motion.div className="fixed inset-0 bg-gray-900/60 backdrop-blur-sm flex items-center justify-center z-50 p-4 text-black" onClick={onClose}>
       <motion.div initial={{ scale: 0.9, y: 50 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.9, y: -50 }} className="bg-white rounded-2xl w-full max-w-2xl mx-auto shadow-xl" onClick={(e) => e.stopPropagation()}>
         <form onSubmit={handleSaveClick}>
-          <div className="flex items-center justify-between p-5 border-b border-gray-200"><h2 className="text-2xl font-bold text-gray-800">Create New Event</h2><button type="button" onClick={onClose} className="p-2 rounded-full hover:bg-gray-100"><X size={24} className="text-gray-500" /></button></div>
+          <div className="flex items-center justify-between p-5 border-b border-gray-200">
+            <h2 className="text-2xl font-bold text-gray-800">Create New Event</h2>
+            <button type="button" onClick={onClose} className="p-2 rounded-full hover:bg-gray-100"><X size={24} className="text-gray-500" /></button>
+          </div>
           <div className="p-6 space-y-4 max-h-[80vh] overflow-y-auto">
-            <div className="form-group"><label>Event Type</label><select value={eventType} onChange={(e) => setEventType(e.target.value)}>{['main', 'sub', 'subsub'].map((type) => (<option key={type} value={type}>{type.replace('subsub', 'Competition/Workshop').replace('sub', 'Sub-Event').replace('main', 'Main Event')}</option>))}</select></div>
-            {eventType !== 'main' && (<div className="form-group"><label>Parent Main Event</label><select name="parentId" value={formData.parentId || ''} onChange={handleInputChange} required disabled={!!creationContext.parentId}><option value="">Select Main Event...</option>{allEvents.map((event) => (<option key={event.id} value={event.id}>{event.name}</option>))}</select></div>)}
-            {eventType === 'subsub' && (<div className="form-group"><label>Parent Sub-Event</label><select name="subParentId" value={formData.subParentId || ''} onChange={handleInputChange} required disabled={!!creationContext.subParentId}><option value="">Select Sub-Event...</option>{subEventOptions.map((sub) => (<option key={sub.id} value={sub.id}>{sub.name}</option>))}</select></div>)}
-            <div className="form-group"><label>Title</label><input type="text" name="name" value={formData.name || ''} onChange={handleInputChange} required/></div>
-            <div className="form-group"><label>Description</label><textarea name="description" value={formData.description || ''} onChange={handleInputChange} rows="3"/></div>
-            {eventType === 'subsub' && (<><hr className="border-gray-200 my-2" /><div className="form-group"><label>Rules</label><textarea name="rules" value={formData.rules || ''} onChange={handleInputChange} rows="4"/></div><div className="grid grid-cols-2 gap-4"><div className="form-group"><label>Min Team Members</label><input type="number" name="minMembers" value={formData.minMembers || 1} onChange={handleInputChange} min="1"/></div><div className="form-group"><label>Max Team Members</label><input type="number" name="maxMembers" value={formData.maxMembers || 1} onChange={handleInputChange} min={formData.minMembers || 1}/></div><div className="form-group"><label>Min Female Members</label><input type="number" name="minFemaleMembers" value={formData.minFemaleMembers || 0} onChange={handleInputChange} min="0"/></div><div className="flex items-center pt-6"><label htmlFor="facultyMentor" className="flex items-center cursor-pointer"><input id="facultyMentor" type="checkbox" name="facultyMentor" checked={!!formData.facultyMentor} onChange={handleInputChange} className="hidden"/>{formData.facultyMentor ? <CheckSquare className="text-[#ff6a3c]" /> : <Square className="text-gray-400" />}<span className="ml-2 font-semibold text-gray-700">Faculty Mentor Required</span></label></div></div></>)}
+            <div className="form-group">
+              <label>Event Type</label>
+              <select className="text-black" value={eventType} onChange={(e) => setEventType(e.target.value)}>
+                {['main', 'sub', 'subsub'].map((type) => (<option key={type} value={type}>
+                  {type.replace('subsub', 'Competition/Workshop').replace('sub', 'Sub-Event').replace('main', 'Main Event')}
+                </option>))}
+              </select>
+            </div>
+            {eventType !== 'main' && (<div className="form-group">
+              <label>Parent Main Event</label>
+              <select name="parentId" value={formData.parentId || ''} onChange={handleInputChange} required disabled={!!creationContext.parentId}>
+                <option className="text-black" value="">Select Main Event...</option>
+                {allEvents.map((event) => (<option className="text-black" key={event.id} value={event.id}>{event.name}</option>))}
+              </select>
+            </div>)}
+            {eventType === 'subsub' && (<div className="form-group">
+              <label>Parent Sub-Event</label>
+              <select name="subParentId" value={formData.subParentId || ''} onChange={handleInputChange} required disabled={!!creationContext.subParentId}>
+                <option className="text-black" value="">Select Sub-Event...</option>
+                {subEventOptions.map((sub) => (<option className="text-black" key={sub.id} value={sub.id}>{sub.name}</option>))}
+              </select>
+            </div>)}
+            <div className="form-group">
+              <label>Title</label>
+              <input className="text-black" type="text" name="name" value={formData.name || ''} onChange={handleInputChange} required/>
+            </div>
+            <div className="form-group">
+              <label>Description</label>
+              <textarea className="text-black" name="description" value={formData.description || ''} onChange={handleInputChange} rows="3"/>
+            </div>
+            {eventType === 'subsub' && (
+              <>
+                <hr className="border-gray-200 my-2" />
+                <div className="form-group">
+                  <label>Rules</label>
+                  <textarea className="text-black" name="rules" value={formData.rules || ''} onChange={handleInputChange} rows="4"/>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="form-group">
+                    <label>Min Team Members</label>
+                    <input className="text-black" type="number" name="minMembers" value={formData.minMembers || 1} onChange={handleInputChange} min="1"/>
+                  </div>
+                  <div className="form-group">
+                    <label>Max Team Members</label>
+                    <input className="text-black" type="number" name="maxMembers" value={formData.maxMembers || 1} onChange={handleInputChange} min={formData.minMembers || 1}/>
+                  </div>
+                  <div className="form-group">
+                    <label>Min Female Members</label>
+                    <input className="text-black" type="number" name="minFemaleMembers" value={formData.minFemaleMembers || 0} onChange={handleInputChange} min="0"/>
+                  </div>
+                  <div className="flex items-center pt-6">
+                    <label htmlFor="facultyMentor" className="flex items-center cursor-pointer">
+                      <input id="facultyMentor" type="checkbox" name="facultyMentor" checked={!!formData.facultyMentor} onChange={handleInputChange} className="hidden"/>
+                      {formData.facultyMentor ? <CheckSquare className="text-[#ff6a3c]" /> : <Square className="text-gray-400" />}
+                      <span className="ml-2 font-semibold text-gray-700">Faculty Mentor Required</span>
+                    </label>
+                  </div>
+                </div>
+              </>
+            )}
           </div>
           <div className="p-4 bg-gray-50 border-t border-gray-200 flex justify-end"><button type="submit" className="px-6 py-2 rounded-lg bg-[#ff6a3c] text-white font-bold hover:shadow-lg hover:shadow-orange-500/50 transition">Save Event</button></div>
         </form>
@@ -164,8 +219,6 @@ const ManageRolesModal = ({ isOpen, onClose, onSave, event, eventLevel, api }) =
     );
 };
 
-// --- Helper Component ---
-// This component was used but not defined, causing the error.
 const ActionButton = ({ onClick, icon: Icon, colorClass, title, disabled = false }) => (
     <button
       onClick={onClick}
@@ -180,7 +233,6 @@ const ActionButton = ({ onClick, icon: Icon, colorClass, title, disabled = false
     </button>
 );
 
-// --- Main Admin Component (Themed) ---
 const AdminPage = () => {
   const { user, isAuthenticated, token } = useAuth();
 
@@ -286,13 +338,9 @@ const AdminPage = () => {
     }
   };
 
-  // This function was called by ActionButton but was not defined.
   const handleToggleStatus = async (eventId, level) => {
     try {
-      // NOTE: You need to implement this API endpoint on your backend.
-      // It should toggle the 'isOpen' status of the event.
       await api.post(`/events/toggle_status/${level}/${eventId}/`);
-      // Refresh data to show the change
       fetchAdminData();
     } catch (error) {
       console.error("Toggle status error:", error);
@@ -420,7 +468,6 @@ const AdminPage = () => {
 
 export default AdminPage;
 
-// Helper CSS classes for form styling in the modal
 const css = `
 .form-group {
     display: flex;

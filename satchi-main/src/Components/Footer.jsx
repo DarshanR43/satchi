@@ -1,6 +1,5 @@
 import React from "react";
 
-// Inlining SVGs to remove dependency on 'react-icons'
 const GithubIcon = () => (
   <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
     <path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22"></path>
@@ -42,7 +41,6 @@ const Footer = () => {
 
   return (
     <footer className="relative w-full bg-gradient-to-t from-orange-100 via-amber-50 to-white pt-16 pb-8 text-gray-800 font-body overflow-hidden">
-      {/* Grid Background */}
       <div
         className="absolute inset-0 bg-grid-gray-200/[0.4] z-0"
         style={{ maskImage: 'linear-gradient(to top, black 20%, transparent 100%)' }}
@@ -50,7 +48,6 @@ const Footer = () => {
 
       <div className="relative z-10 max-w-7xl mx-auto px-6">
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-12 text-sm">
-          {/* About Section */}
           <div>
             <h4 className="text-lg font-semibold mb-4 text-[#df9400]">SATCHI Tech Fest</h4>
             <p className="text-gray-600 leading-relaxed">
@@ -58,7 +55,6 @@ const Footer = () => {
             </p>
           </div>
 
-          {/* Quick Links */}
           <div>
             <h4 className="text-lg font-semibold mb-4 text-[#df9400]">Quick Links</h4>
             <ul className="space-y-2 text-gray-600">
@@ -69,7 +65,6 @@ const Footer = () => {
             </ul>
           </div>
 
-          {/* Venue */}
           <div>
             <h4 className="text-lg font-semibold mb-4 text-[#df9400]">Venue</h4>
             <p className="text-gray-600 leading-relaxed">
@@ -79,7 +74,6 @@ const Footer = () => {
             </p>
           </div>
 
-          {/* Follow Us */}
           <div>
             <h4 className="text-lg font-semibold mb-4 text-[#df9400]">Follow Us</h4>
             <div className="flex space-x-4">
@@ -90,7 +84,6 @@ const Footer = () => {
           </div>
         </div>
 
-        {/* Divider and Credits */}
         <div className="mt-16 pt-8 border-t border-gray-200/80 flex flex-col items-center text-center">
           <p className="text-sm text-gray-500">
             &copy; {new Date().getFullYear()} SATCHI Tech Fest. All rights reserved.
@@ -101,7 +94,6 @@ const Footer = () => {
         </div>
       </div>
       
-      {/* Scroll To Top Button */}
       <button
         onClick={scrollToTop}
         className="absolute bottom-8 right-8 p-3 rounded-full bg-[#ff6a3c] text-white shadow-lg shadow-orange-500/30 hover:bg-[#e65c30] transition-all"

@@ -4,7 +4,6 @@ import { useNavigate } from 'react-router-dom';
 import { ChevronDown, X, Loader } from 'lucide-react';
 import axios from 'axios';
 
-// --- API Service ---
 const API_URL = import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000/';
 
 const getEvents = async () => {
@@ -19,7 +18,6 @@ const getEvents = async () => {
   }
 };
 
-// --- Sub-Sub-Event Modal Component (Themed) ---
 const SubSubEventsModal = ({ subEvent, isOpen, onClose, onRegister }) => {
   if (!isOpen || !subEvent) return null;
 
@@ -85,7 +83,6 @@ const SubSubEventsModal = ({ subEvent, isOpen, onClose, onRegister }) => {
   );
 };
 
-// --- Main Events Component (Themed) ---
 const Events = () => {
   const [events, setEvents] = useState([]);
   const [expandedEvents, setExpandedEvents] = useState({});
@@ -143,7 +140,6 @@ const Events = () => {
         onRegister={handleRegister}
       />
       <div className="relative w-full min-h-screen px-4 sm:px-6 lg:px-8 py-20 font-body text-gray-800">
-        {/* Themed Background */}
         <div className="absolute inset-0 bg-gradient-to-br from-white via-amber-50 to-orange-100 z-0"></div>
         <div className="absolute top-0 left-0 w-full h-full bg-grid-gray-200/[0.4] z-0"></div>
         

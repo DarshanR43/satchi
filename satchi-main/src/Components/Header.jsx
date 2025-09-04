@@ -8,7 +8,6 @@ const Header = () => {
   const [mobileOpen, setMobileOpen] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
-  // 1. Get the full user object from the context
   const { isAuthenticated, logout, user } = useAuth();
 
   const handleLogout = async () => {
@@ -16,20 +15,16 @@ const Header = () => {
     navigate("/login");
   };
 
-  // 2. Define which roles are considered "admin" roles
   const adminRoles = [
     "SUPERADMIN", "Super Admin", "EVENTADMIN", "Event Admin", "SUBEVENTADMIN", "Sub Event Admin", "EVENTMANAGER", "Event Manager", 
     "SUBEVENTMANAGER", "Sub Event Manager", "SUBSUBEVENTMANAGER", "Sub Sub Event Manager", "COORDINATOR", "Coordinator"
   ];
 
-  // 3. Check if the current user's role is in the admin list
   const isAdmin = user && adminRoles.includes(user.role);
 
   const menuItems = [
     { label: "Home", path: "/" },
     { label: "Events", path: "/events" },
-    // { label: "Evaluate", path: "/evaluate" },
-    // 4. Conditionally add the Admin link based on the isAdmin check
     ...(isAdmin ? [{ label: "Admin", path: "/admin" }] : []),
     ...(isAuthenticated
       ? [{ label: "Profile", path: "/profile" }]
@@ -54,7 +49,6 @@ const Header = () => {
     return () => window.removeEventListener("scroll", checkHeroVisible);
   }, [location.pathname]);
 
-  // SVG Icons to avoid external dependencies
   const MenuIcon = () => (
     <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16m-7 6h7" />
@@ -86,7 +80,6 @@ const Header = () => {
               <img src="/images/Satchi_main_logo.png" alt="Satchi Logo" className="h-8" />
             </a>
             
-            {/* Desktop Menu */}
             <ul className="hidden lg:flex items-center gap-2 text-sm font-semibold">
               {menuItems.map((item) => (
                 <li key={item.label}>
@@ -116,7 +109,6 @@ const Header = () => {
               )}
             </ul>
 
-            {/* Mobile Menu Toggle */}
             <button
               onClick={() => setMobileOpen(!mobileOpen)}
               className="lg:hidden text-gray-600"
@@ -125,7 +117,6 @@ const Header = () => {
             </button>
           </div>
 
-          {/* Mobile Dropdown */}
           <AnimatePresence>
             {mobileOpen && (
               <motion.div

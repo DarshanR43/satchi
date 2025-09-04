@@ -1,11 +1,11 @@
 import React from 'react';
 import { motion } from 'framer-motion';
-import { useAuth } from '../context/AuthContext'; // This will be used in your actual project
+import { useAuth } from '../context/AuthContext';
 import { Navigate } from 'react-router-dom';
 import { User, Mail, Phone, School, GraduationCap, BookOpen, Hash, Briefcase, Calendar, UserCheck } from 'lucide-react';
 
 const ProfileDetail = ({ icon, label, value }) => {
-    if (!value) return null; // Don't render if value is not present
+    if (!value) return null;
     return (
         <div className="flex items-start gap-4">
             <div className="text-[#df9400] mt-1">{icon}</div>
@@ -20,14 +20,12 @@ const ProfileDetail = ({ icon, label, value }) => {
 const ProfilePage = () => {
     const { user, isAuthenticated } = useAuth();
 
-    // If the user is not authenticated, redirect to the login page
     if (!isAuthenticated) {
         return <Navigate to="/login" />;
     }
 
     return (
         <div className="relative w-full min-h-screen px-4 sm:px-6 lg:px-8 py-20 font-body text-gray-800">
-            {/* Themed Background */}
             <div className="absolute inset-0 bg-gradient-to-br from-white via-amber-50 to-orange-100 z-0"></div>
             <div className="absolute top-0 left-0 w-full h-full bg-grid-gray-200/[0.4] z-0"></div>
 
@@ -58,14 +56,12 @@ const ProfilePage = () => {
                         <ProfileDetail icon={<Phone size={20} />} label="Phone" value={user?.phone} />
                         <ProfileDetail icon={<UserCheck size={20} />} label="Role" value={user?.role} />
 
-                        {/* Student-specific fields */}
                         <ProfileDetail icon={<School size={20} />} label="School" value={user?.school} />
                         <ProfileDetail icon={<GraduationCap size={20} />} label="Degree" value={user?.degree} />
                         <ProfileDetail icon={<BookOpen size={20} />} label="Course" value={user?.course} />
                         <ProfileDetail icon={<Hash size={20} />} label="Roll Number" value={user?.roll_no} />
                         <ProfileDetail icon={<Calendar size={20} />} label="Current Year" value={user?.current_year} />
                         
-                        {/* Faculty-specific fields */}
                         <ProfileDetail icon={<Briefcase size={20} />} label="Position" value={user?.position} />
                     </div>
                 </motion.div>

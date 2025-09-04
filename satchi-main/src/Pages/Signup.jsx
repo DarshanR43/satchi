@@ -3,7 +3,6 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { User, Mail, Phone, Hash, School, Briefcase, Calendar, ChevronDown, UserCheck, CheckCircle, GraduationCap, BookOpenCheck, Lock, Eye, EyeOff, WandSparkles } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
-// --- Reusable Themed Form Components ---
 const InputField = ({ name, type = 'text', placeholder, icon, error, value, onChange, className = '' }) => (
     <div className={`relative ${className}`}>
         <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none z-10">{icon}</div>
