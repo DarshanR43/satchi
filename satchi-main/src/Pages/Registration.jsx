@@ -1,12 +1,13 @@
 import React, { useState, useEffect } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom'; // Import useNavigate
 import axios from 'axios';
 import { motion } from 'framer-motion';
-import { Loader, AlertTriangle, BookOpen, User, Mail, Phone, Users, UserPlus, UserMinus, FileText, Briefcase } from 'lucide-react';
+import { Loader, AlertTriangle, BookOpen, User, Mail, Phone, Users, UserPlus, UserMinus, FileText, Briefcase, Lightbulb } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
-const API_URL = 'http://127.0.0.1:8000';
+const API_URL = import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000';
 
+// Helper function to get CSRF token
 function getCookie(name) {
   let cookieValue = null;
   if (document.cookie && document.cookie !== '') {
@@ -22,21 +23,24 @@ function getCookie(name) {
   return cookieValue;
 }
 
-const RegistrationForm = ({ event }) => {
 
+// --- Registration Form Component ---
+const RegistrationForm = ({ event }) => {
     const { user } = useAuth();
+    const navigate = useNavigate(); // Initialize the navigate function
 
     const eventId = event?.id;
     const minTeamSize = event?.minTeamSize || 1;
-    const maxTeamSize = event?.maxTeamSize || 1;
+    const maxTeamSize = event?.maxTeamSize || 10;
     const isFacultyMentorRequired = event?.isFacultyMentorRequired || false;
 
     const [formData, setFormData] = useState({
         team_name: '',
+        project_topic: '',
         captain_name: '',
         captain_email: '',
         captain_phone: '',
-        team_members: Array(minTeamSize > 1 ? minTeamSize - 1 : 0).fill(''),
+        team_members: [],
         faculty_mentor_name: '',
     });
     const [submissionStatus, setSubmissionStatus] = useState({ message: '', type: '' });
@@ -53,9 +57,10 @@ const RegistrationForm = ({ event }) => {
     }, [user]);
     
     useEffect(() => {
+        const requiredMembers = minTeamSize > 1 ? minTeamSize - 1 : 0;
         setFormData(prev => ({
             ...prev,
-            team_members: Array(minTeamSize > 1 ? minTeamSize - 1 : 0).fill('')
+            team_members: Array(requiredMembers).fill('')
         }));
     }, [minTeamSize]);
 
@@ -76,9 +81,10 @@ const RegistrationForm = ({ event }) => {
         }
     };
 
-    const removeTeamMember = (index) => {
-        if (formData.team_members.length > (minTeamSize > 1 ? minTeamSize - 1 : 0)) {
-            const newTeamMembers = formData.team_members.filter((_, i) => i !== index);
+    const removeTeamMember = () => {
+        const requiredMembers = minTeamSize > 1 ? minTeamSize - 1 : 0;
+        if (formData.team_members.length > requiredMembers) {
+            const newTeamMembers = formData.team_members.slice(0, -1);
             setFormData(prev => ({ ...prev, team_members: newTeamMembers }));
         }
     };
@@ -90,7 +96,7 @@ const RegistrationForm = ({ event }) => {
         const submissionData = {
             ...formData,
             event: eventId,
-            team_members: formData.team_members.filter(email => email.trim() !== '')
+            team_members: formData.team_members.filter(email => email && email.trim() !== '')
         };
 
         try {
@@ -101,7 +107,13 @@ const RegistrationForm = ({ event }) => {
                     'X-CSRFToken': csrftoken,
                 },
             });
-            setSubmissionStatus({ message: 'Registration successful!', type: 'success' });
+            setSubmissionStatus({ message: 'Registration successful! Redirecting to events...', type: 'success' });
+            
+            // Redirect to events page after 2 seconds
+            setTimeout(() => {
+                navigate('/events');
+            }, 2000);
+
         } catch (error) {
             const errorMessage = error.response?.data ? JSON.stringify(error.response.data) : error.message;
             setSubmissionStatus({ message: `Submission failed: ${errorMessage}`, type: 'error' });
@@ -112,65 +124,46 @@ const RegistrationForm = ({ event }) => {
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="max-w-3xl mx-auto">
             <form onSubmit={handleSubmit} className="bg-white/80 border border-gray-200/90 rounded-2xl p-8 backdrop-blur-lg shadow-xl space-y-6">
                 
-                <div>
-                    <label htmlFor="team_name" className="block mb-1.5 text-sm font-semibold text-gray-600">Team Name</label>
-                    <div className="relative">
-                        <FileText className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
-                        <input type="text" id="team_name" name="team_name" value={formData.team_name} onChange={handleInputChange} placeholder="Enter your team's creative name" required className="w-full pl-11 pr-4 py-2.5 rounded-lg bg-gray-50 border border-gray-300 text-gray-800 focus:outline-none focus:ring-2 focus:ring-[#ff6a3c] focus:border-transparent transition" />
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    {/* Team Name */}
+                    <div>
+                        <label htmlFor="team_name" className="block mb-1.5 text-sm font-semibold text-gray-600">Team Name</label>
+                        <div className="relative"><Users className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" size={20} /><input type="text" id="team_name" name="team_name" value={formData.team_name} onChange={handleInputChange} placeholder="Your team's creative name" required className="w-full pl-11 pr-4 py-2.5 rounded-lg bg-gray-50 border border-gray-300 text-gray-800 focus:outline-none focus:ring-2 focus:ring-[#ff6a3c] focus:border-transparent transition" /></div>
+                    </div>
+                     {/* Project Topic */}
+                    <div>
+                        <label htmlFor="project_topic" className="block mb-1.5 text-sm font-semibold text-gray-600">Project Topic</label>
+                        <div className="relative"><Lightbulb className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" size={20} /><input type="text" id="project_topic" name="project_topic" value={formData.project_topic} onChange={handleInputChange} placeholder="What is your project about?" required className="w-full pl-11 pr-4 py-2.5 rounded-lg bg-gray-50 border border-gray-300 text-gray-800 focus:outline-none focus:ring-2 focus:ring-[#ff6a3c] focus:border-transparent transition" /></div>
                     </div>
                 </div>
 
                 <fieldset className="border border-gray-200/90 rounded-lg p-4">
                     <legend className="px-2 font-semibold text-gray-700">Team Captain (You)</legend>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                         <div>
-                            <label htmlFor="captain_name" className="block mb-1.5 text-sm font-semibold text-gray-600">Full Name</label>
-                            <div className="relative">
-                                <User className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
-                                <input type="text" id="captain_name" name="captain_name" value={formData.captain_name} onChange={handleInputChange} required readOnly className="w-full pl-11 pr-4 py-2.5 rounded-lg bg-gray-200/70 border border-gray-300 text-gray-600 cursor-not-allowed"/>
-                            </div>
-                         </div>
-                         <div>
-                            <label htmlFor="captain_email" className="block mb-1.5 text-sm font-semibold text-gray-600">Email</label>
-                            <div className="relative">
-                                <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
-                                <input type="email" id="captain_email" name="captain_email" value={formData.captain_email} onChange={handleInputChange} required readOnly className="w-full pl-11 pr-4 py-2.5 rounded-lg bg-gray-200/70 border border-gray-300 text-gray-600 cursor-not-allowed"/>
-                            </div>
-                         </div>
-                         <div className="md:col-span-2">
-                            <label htmlFor="captain_phone" className="block mb-1.5 text-sm font-semibold text-gray-600">Mobile Number</label>
-                            <div className="relative">
-                                <Phone className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
-                                <input type="tel" id="captain_phone" name="captain_phone" value={formData.captain_phone} onChange={handleInputChange} required className="w-full pl-11 pr-4 py-2.5 rounded-lg bg-gray-50 border border-gray-300 text-gray-800 focus:outline-none focus:ring-2 focus:ring-[#ff6a3c] focus:border-transparent transition" />
-                            </div>
-                         </div>
+                         <div><label htmlFor="captain_name" className="block mb-1.5 text-sm font-semibold text-gray-600">Full Name</label><div className="relative"><User className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" size={20} /><input type="text" id="captain_name" name="captain_name" value={formData.captain_name} onChange={handleInputChange} required readOnly className="w-full pl-11 pr-4 py-2.5 rounded-lg bg-gray-200/70 border border-gray-300 text-gray-600 cursor-not-allowed"/></div></div>
+                         <div><label htmlFor="captain_email" className="block mb-1.5 text-sm font-semibold text-gray-600">Email</label><div className="relative"><Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" size={20} /><input type="email" id="captain_email" name="captain_email" value={formData.captain_email} onChange={handleInputChange} required readOnly className="w-full pl-11 pr-4 py-2.5 rounded-lg bg-gray-200/70 border border-gray-300 text-gray-600 cursor-not-allowed"/></div></div>
+                         <div className="md:col-span-2"><label htmlFor="captain_phone" className="block mb-1.5 text-sm font-semibold text-gray-600">Mobile Number</label><div className="relative"><Phone className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" size={20} /><input type="tel" id="captain_phone" name="captain_phone" value={formData.captain_phone} onChange={handleInputChange} required className="w-full pl-11 pr-4 py-2.5 rounded-lg bg-gray-50 border border-gray-300 text-gray-800 focus:outline-none focus:ring-2 focus:ring-[#ff6a3c] focus:border-transparent transition" /></div></div>
                     </div>
                 </fieldset>
 
                 {maxTeamSize > 1 && (
                     <div>
-                        <label className="block mb-2 font-semibold text-gray-700">Team Members <span className="text-sm text-gray-500 font-normal">(Min: {minTeamSize}, Max: {maxTeamSize})</span></label>
+                        <label className="block mb-2 font-semibold text-gray-700">Team Members <span className="text-sm text-gray-500 font-normal">(Total: Min {minTeamSize}, Max {maxTeamSize})</span></label>
                         <div className="space-y-3">
                             {formData.team_members.map((member, index) => (
-                                <div key={index} className="relative">
-                                    <Users className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
-                                    <input type="email" value={member} onChange={(e) => handleTeamMemberChange(index, e.target.value)} placeholder={`Team Member ${index + 2} Email`} required={index < minTeamSize - 1} className="w-full pl-11 pr-4 py-2.5 rounded-lg bg-gray-50 border border-gray-300 focus:outline-none focus:ring-2 focus:ring-[#ff6a3c] focus:border-transparent transition"/>
-                                </div>
+                                <div key={index} className="relative"><User className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" size={20} /><input type="email" value={member} onChange={(e) => handleTeamMemberChange(index, e.target.value)} placeholder={`Team Member ${index + 2} Email`} required={index < minTeamSize - 1} className="w-full pl-11 pr-4 py-2.5 rounded-lg bg-gray-50 border border-gray-300 focus:outline-none focus:ring-2 focus:ring-[#ff6a3c] focus:border-transparent transition"/></div>
                             ))}
                         </div>
                         <div className="flex gap-4 mt-4">
                             <button type="button" onClick={addTeamMember} disabled={formData.team_members.length >= maxTeamSize - 1} className="flex items-center gap-2 px-4 py-2 text-sm rounded-md bg-orange-100/80 text-[#df9400] font-semibold transition disabled:opacity-50 disabled:cursor-not-allowed hover:bg-orange-200/80"><UserPlus size={16}/> Add Member</button>
-                            <button type="button" onClick={() => removeTeamMember(formData.team_members.length - 1)} disabled={formData.team_members.length <= (minTeamSize > 1 ? minTeamSize - 1 : 0)} className="flex items-center gap-2 px-4 py-2 text-sm rounded-md bg-red-100/80 text-red-600 font-semibold transition disabled:opacity-50 disabled:cursor-not-allowed hover:bg-red-200/80"><UserMinus size={16}/> Remove Last</button>
+                            <button type="button" onClick={removeTeamMember} disabled={formData.team_members.length <= (minTeamSize > 1 ? minTeamSize - 1 : 0)} className="flex items-center gap-2 px-4 py-2 text-sm rounded-md bg-red-100/80 text-red-600 font-semibold transition disabled:opacity-50 disabled:cursor-not-allowed hover:bg-red-200/80"><UserMinus size={16}/> Remove Last</button>
                         </div>
                     </div>
                 )}
                 
                 <div>
                     <label htmlFor="faculty_mentor_name" className="block mb-1.5 text-sm font-semibold text-gray-600">Faculty Mentor Name {isFacultyMentorRequired ? '' : '(Optional)'}</label>
-                    <div className="relative">
-                        <Briefcase className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
-                        <input type="text" id="faculty_mentor_name" name="faculty_mentor_name" value={formData.faculty_mentor_name} onChange={handleInputChange} placeholder="Enter mentor's full name" required={isFacultyMentorRequired} className="w-full pl-11 pr-4 py-2.5 rounded-lg bg-gray-50 border border-gray-300 text-gray-800 focus:outline-none focus:ring-2 focus:ring-[#ff6a3c] focus:border-transparent transition" />
-                    </div>
+                    <div className="relative"><Briefcase className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" size={20} /><input type="text" id="faculty_mentor_name" name="faculty_mentor_name" value={formData.faculty_mentor_name} onChange={handleInputChange} placeholder="Enter mentor's full name" required={isFacultyMentorRequired} className="w-full pl-11 pr-4 py-2.5 rounded-lg bg-gray-50 border border-gray-300 text-gray-800 focus:outline-none focus:ring-2 focus:ring-[#ff6a3c] focus:border-transparent transition" /></div>
                 </div>
                 
                 <div className="text-center pt-4">
@@ -186,19 +179,16 @@ const RegistrationForm = ({ event }) => {
     );
 };
 
+
+// --- Main Registration Page Component ---
 const EventRules = ({ event }) => (
     <motion.div
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
         className="mb-10 bg-white/70 border border-gray-200/80 rounded-2xl p-6 backdrop-blur-lg shadow-xl max-w-3xl mx-auto"
     >
-        <div className="flex items-center gap-3 mb-4">
-            <BookOpen className="text-[#df9400]" size={24} />
-            <h2 className="text-2xl font-bold text-gray-800">Rules for: <span className="text-[#ff6a3c]">{event.name}</span></h2>
-        </div>
-        <div className="prose prose-sm text-gray-600 whitespace-pre-wrap">
-            {event.rules || "No specific rules provided for this event."}
-        </div>
+        <div className="flex items-center gap-3 mb-4"><BookOpen className="text-[#df9400]" size={24} /><h2 className="text-2xl font-bold text-gray-800">Rules for: <span className="text-[#ff6a3c]">{event.name}</span></h2></div>
+        <div className="prose prose-sm text-gray-600 whitespace-pre-wrap">{event.rules || "No specific rules provided for this event."}</div>
     </motion.div>
 );
 
@@ -211,6 +201,7 @@ const Registration = () => {
     useEffect(() => {
         if (!eventId) {
             setLoading(false);
+            setError("No event specified for registration.");
             return;
         }
 
@@ -220,8 +211,7 @@ const Registration = () => {
                 const response = await axios.get(`${API_URL}/events/details/${eventId}/`);
                 setEvent(response.data);
             } catch (err) {
-                console.error("Failed to fetch event details:", err);
-                setError("Could not load event details. Please try again.");
+                setError("Could not load event details. The event might not exist or registration is not open.");
             } finally {
                 setLoading(false);
             }
@@ -233,15 +223,10 @@ const Registration = () => {
     return (
         <div className="relative w-full min-h-screen px-4 sm:px-6 lg:px-8 py-20 font-body text-gray-800">
             <div className="absolute inset-0 bg-gradient-to-br from-white via-amber-50 to-orange-100 z-0"></div>
-            <div className="absolute top-0 left-0 w-full h-full bg-grid-gray-200/[0.4] z-0"></div>
+            <div className="absolute top-0 left-0 w-full h-full bg-[radial-gradient(#e5e7eb_1px,transparent_1px)] [background-size:16px_16px] opacity-20 z-0"></div>
 
             <div className="relative z-10 pt-16">
-                 <motion.div
-                    initial={{ opacity: 0, y: -50 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.7 }}
-                    className="text-center mb-12"
-                >
+                 <motion.div initial={{ opacity: 0, y: -50 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.7 }} className="text-center mb-12">
                     <h1 className="text-4xl sm:text-5xl md:text-6xl font-heading font-bold bg-gradient-to-r from-[#ff6a3c] via-[#df9400] to-[#ff6a3c] bg-clip-text text-transparent">
                         Event Registration
                     </h1>
@@ -250,22 +235,15 @@ const Registration = () => {
                     </p>
                 </motion.div>
 
-                {loading && (
-                    <div className="flex justify-center items-center py-10">
-                        <Loader className="animate-spin text-[#ff6a3c]" size={40} />
-                    </div>
-                )}
-
-                {error && (
-                    <div className="max-w-3xl mx-auto bg-red-100 border border-red-400 text-red-700 text-center p-4 rounded-lg mb-8">
-                        <AlertTriangle className="inline-block mr-2" />
-                        {error}
-                    </div>
-                )}
+                {loading && (<div className="flex justify-center items-center py-10"><Loader className="animate-spin text-[#ff6a3c]" size={40} /></div>)}
+                {error && (<div className="max-w-3xl mx-auto bg-red-100 border border-red-400 text-red-700 text-center p-4 rounded-lg mb-8"><AlertTriangle className="inline-block mr-2" />{error}</div>)}
                 
                 {event && <EventRules event={event} />}
-
-                {event && <RegistrationForm event={event} />}
+                {event ? <RegistrationForm event={event} /> : !loading && !error && (
+                     <div className="max-w-3xl mx-auto bg-yellow-100 border border-yellow-400 text-yellow-700 text-center p-4 rounded-lg mb-8">
+                        Please select an event from the events page to register.
+                    </div>
+                )}
             </div>
         </div>
     );

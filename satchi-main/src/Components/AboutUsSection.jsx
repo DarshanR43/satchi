@@ -89,13 +89,13 @@ const AboutUsSection = () => {
                         <p className="text-lg leading-relaxed text-gray-600">
                            Embodying our commitment to hands-on learning, we inspire the next generation to "Dare to be Different." Anokha is more than an exhibition; it's a celebration of technical ingenuity and a glimpse into the future, envisioned by the brightest young minds.
                         </p>
-                         <motion.button
+                         {/* <motion.button
                             whileHover={{ scale: 1.05, boxShadow: "0px 0px 20px rgba(255, 106, 60, 0.4)" }}
                             whileTap={{ scale: 0.95 }}
                             className="mt-8 px-8 py-3 bg-[#ff6a3c] text-white font-semibold rounded-lg shadow-lg shadow-orange-500/30 transition-all duration-300"
                         >
                             Discover More
-                        </motion.button>
+                        </motion.button> */}
                     </div>
                 </motion.div>
                 

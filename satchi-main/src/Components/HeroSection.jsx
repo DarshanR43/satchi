@@ -6,22 +6,21 @@ const HeroSection = () => {
   const { isAuthenticated } = useAuth();
 
   return (
-    <section 
-      id="hero" 
-      className="relative min-h-screen w-full flex items-center justify-center text-gray-800 overflow-hidden font-body bg-white"
+    <section
+      id="hero"
+      className="relative items-center justify-center min-h-screen w-full flex bg-white overflow-hidden px-8"
     >
-      <div className="absolute -top-40 -left-40 w-96 h-96 bg-gradient-to-br from-[#ff6a3c44] to-[#df940044] rounded-full filter blur-3xl opacity-60"></div>
-      <div className="absolute -top-40 -right-40 w-96 h-96 bg-gradient-to-tl from-[#ff6a3c33] to-[#df940033] rounded-full filter blur-3xl opacity-50"></div>
+      {/* Blurred Gradient Background Blob */}
+      <motion.div
+        initial={{ opacity: 0, scale: 0.9 }}
+        animate={{ opacity: 0.7, scale: 1 }}
+        transition={{ duration: 1.5 }}
+        className="absolute inset-0 flex items-center justify-center"
+      >
+        <div className="w-[600px] h-[600px] bg-gradient-to-r from-[#df9400] via-[#ff6a3c] to-pink-500 rounded-full blur-[140px]" />
+      </motion.div>
 
       <div className="relative z-10 text-center px-4 sm:px-6 max-w-4xl">
-        <motion.p
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ duration: 1, delay: 0.2 }}
-          className="mb-4 text-lg text-gray-600"
-        >
-          A Tech Fest by SATCHI
-        </motion.p>
         <motion.h1
           initial={{ opacity: 0, y: 50 }}
           animate={{ opacity: 1, y: 0 }}
@@ -64,7 +63,7 @@ const HeroSection = () => {
                 whileTap={{ scale: 0.95 }}
                 className="px-8 py-3 rounded-full text-base font-semibold 
                 bg-transparent border border-gray-300 text-gray-700
-                hover:bg-gray-100 hover:border-gray-400 transition duration-300"
+                hover:bg-gray-200 hover:border-gray-400 transition duration-300"
               >
                 View Profile
               </motion.a>
@@ -82,6 +81,16 @@ const HeroSection = () => {
             )}
         </motion.div>
       </div>
+
+      {/* Huge Background Text */}
+      <motion.h1
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 0.2 }}
+        transition={{ duration: 1, delay: 0.8 }}
+        className="absolute bottom-10 left-1/2 -translate-x-1/2 text-[10rem] font-bold text-gray-200 select-none"
+      >
+        GYAN
+      </motion.h1>
     </section>
   );
 };

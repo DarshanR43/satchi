@@ -4,9 +4,9 @@ export default {
   theme: {
     extend: {
       colors: {
-        accent: "#FFAB00",       
-        vibrant: "#FF805A",      
-        darkBg: "#18122B",       
+        accent: "#df9400ff",       
+        vibrant: "#ff6a3cff",      
+        darkBg: "#000000ff",       
         surface: "#22223B",      
         deepBlue: "#2A2346",     
         glowBlue: "#FF5E85",     

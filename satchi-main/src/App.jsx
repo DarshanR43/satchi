@@ -9,7 +9,7 @@ import Registration from "./Pages/Registration";
 import Signup from "./Pages/Signup";
 import Events from "./Pages/Events";
 import Admin from "./Pages/Admin";
-// import EvaluationPage from "./Pages/Evaluation";
+import EvaluationPage from "./Pages/Evaluation";
 import ProfilePage from "./Pages/Profile";
 
 const App = () => {
@@ -23,7 +23,7 @@ const App = () => {
             <Route path="events" element={<Events />} />
             <Route path="admin" element={<Admin />} />
             <Route path="login" element={<Login />} />
-            {/* <Route path="evaluate" element={<EvaluationPage/>}/> */}
+            <Route path="evaluate" element={<EvaluationPage/>}/>
             {/* --- UPDATED ROUTES --- */}
             {/* Route for generic registration */}
             <Route path="register" element={<Registration />} />
