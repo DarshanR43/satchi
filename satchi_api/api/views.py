@@ -1,12 +1,101 @@
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
 from rest_framework import status
-from .serializers import ProjectSerializer
+from events.models import MainEvent, SubEvent, SubSubEvent
+from users.models import User
+from .models import Project, TeamMember
 
 @api_view(['POST'])
 def submit_project(request):
-    serializer = ProjectSerializer(data=request.data)
-    if serializer.is_valid():
-        serializer.save()
-        return Response(serializer.data, status=status.HTTP_201_CREATED)
-    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    try:
+        data = request.data
+        event_id = data.get('event_id', None)
+        team_name = data.get('team_name', None)
+        project_name = data.get('project_topic', None)
+        team_captain = data.get('captain_name', None)
+        team_captain_email = data.get('captain_email', None)
+        team_captain_phone = data.get('captain_phone', None)
+        team_members = data.get('team_members', [])
+        faculty_mentor_name = data.get('faculty_mentor_name', None)
+
+        if not event_id or not project_name:
+            return Response({"error": "Missing required fields."}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            event = SubSubEvent.objects.get(event_id=event_id)
+            min_team_size = event.minTeamSize
+            max_team_size = event.maxTeamSize
+            minFemaleParticipants = event.minFemaleParticipants
+            isFacultyMentorRequired = event.isFacultyMentorRequired
+
+            if len(team_members) + 1 < min_team_size:
+                return Response({"error": f"Team size is less than the minimum required size of {min_team_size}."}, status=status.HTTP_400_BAD_REQUEST)
+            if len(team_members) + 1 > max_team_size:
+                return Response({"error": f"Team size exceeds the maximum allowed size of {max_team_size}."}, status=status.HTTP_400_BAD_REQUEST)
+            
+        except SubSubEvent.DoesNotExist:
+            return Response({"error": "Event not found."}, status=status.HTTP_404_NOT_FOUND)
+
+        totalEmails = []
+        totalEmails.append(team_captain_email.strip())
+        for member in team_members:
+            totalEmails.append(member.strip())
+        
+        if len(totalEmails) != len(set(totalEmails)):
+            return Response({"error": "Duplicate email addresses found."}, status=status.HTTP_400_BAD_REQUEST)
+
+        femaleCount = 0
+        for mails in totalEmails:
+            #if not User.objects.filter(email=mails).exists():
+            #    return Response({"error": f"Email {mails} is not registered with Gyan. Please Do create a Account"}, status=status.HTTP_400_BAD_REQUEST)
+            if TeamMember.objects.filter(email=mails).exists():
+                return Response({"error": f"Email {mails} is already registered in another project."}, status=status.HTTP_400_BAD_REQUEST)
+            if Project.objects.filter(captain_email=mails).exists():
+                return Response({"error": f"Email {mails} is already registered in another project."}, status=status.HTTP_400_BAD_REQUEST)
+        """    
+            try:
+                user = User.objects.get(email=mails)
+                if user.sex == 'female':
+                    femaleCount += 1
+            except User.DoesNotExist:
+                 return Response({"error": f"Email {mails} is not registered with Gyan. Please Do create a Account"}, status=status.HTTP_400_BAD_REQUEST)
+
+        if minFemaleParticipants and femaleCount < minFemaleParticipants:
+            return Response({"error": f"At least {minFemaleParticipants} female participants are required."}, status=status.HTTP_400_BAD_REQUEST)
+        """
+        if isFacultyMentorRequired and not faculty_mentor_name:
+            return Response({"error": "Faculty mentor name is required."}, status=status.HTTP_400_BAD_REQUEST)
+
+        project = Project.objects.create(
+            event=event,
+            team_name=team_name,
+            project_topic=project_name,
+            captain_name=team_captain,
+            captain_email=team_captain_email,
+            captain_phone=team_captain_phone,
+            team_members=team_members,
+            faculty_mentor_name=faculty_mentor_name,
+        )
+        project.save()
+
+        for mails in totalEmails:
+            try:
+                user = User.objects.get(email=mails)
+                TeamMember.objects.create(
+                    name=user.full_name,
+                    email=user.email,
+                    phone=user.phone,
+                    project=project
+                )
+            except User.DoesNotExist:
+                TeamMember.objects.create(
+                    name="Unknown",
+                    email=mails,
+                    phone="",
+                    project=project
+                )
+
+        return Response({"message": "Project submitted successfully.", "project": project}, status=status.HTTP_201_CREATED)
+
+    except Exception as e:
+        return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

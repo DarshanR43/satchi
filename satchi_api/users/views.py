@@ -50,7 +50,7 @@ def signup_view(request):
             degree=degree if user_type == 'student' else None,
             course=course if user_type == 'student' else None,
             roll_no=roll_no if user_type == 'student' else None,
-            sex=sex if user_type == 'student' else None,
+            sex=sex.lower() if user_type == 'student' else None,
             current_year=current_year if user_type == 'student' else None,
             position=position if user_type != 'student' else None,
             role=User.Role.PARTICIPANT
