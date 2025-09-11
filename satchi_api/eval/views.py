@@ -61,8 +61,9 @@ def get_subsubevents(request, sub_event_id):
                 'event_id': subsubevent.event_id
             })
         return Response(subsubevent_list, status=status.HTTP_200_OK)
-    
-def getProjectsByEvent(event_id):
+
+@api_view(['POST'])
+def getProjectsByEvent(request, event_id):
     try:
         event = SubSubEvent.objects.get(event_id=event_id)
         projects = Project.objects.filter(event=event)
