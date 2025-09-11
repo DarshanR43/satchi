@@ -6,10 +6,9 @@ from users.models import User
 from .models import Project, TeamMember
 
 @api_view(['POST'])
-def submit_project(request):
+def submit_project(request, event_id):
     try:
         data = request.data
-        event_id = data.get('event_id', None)
         team_name = data.get('team_name', None)
         project_name = data.get('project_topic', None)
         team_captain = data.get('captain_name', None)
