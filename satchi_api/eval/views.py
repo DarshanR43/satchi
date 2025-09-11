@@ -65,7 +65,7 @@ def get_subsubevents(request, sub_event_id):
 @api_view(['GET'])
 def getProjectsByEvent(request, event_id):
     try:
-        event = SubSubEvent.objects.get(event_id=event_id)
+        event = SubSubEvent.objects.get(id=event_id)
         projects = Project.objects.filter(event=event)
         project_list = []
         for project in projects:
@@ -81,7 +81,7 @@ def getProjectsByEvent(request, event_id):
             })
         return Response(project_list, status=status.HTTP_200_OK)
     except SubSubEvent.DoesNotExist:
-        return Response({"error": "Event not found."}, status=status.HTTP_404_NOT_FOUND)
+        return Response({"error": "Event not found."}, status=status.HTTP_400_BAD_REQUEST)
 
 @api_view(['POST'])
 def evaluation_view(request):

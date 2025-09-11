@@ -1,211 +1,261 @@
-import React, { useState, useMemo, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { ChevronRight, ArrowLeft, X, Users, Star, Plus, Minus, Check, Save, Search, Home } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { motion } from 'framer-motion';
+import { ChevronDown, Send, CheckCircle, AlertTriangle, Loader, BarChart2 } from 'lucide-react';
+import axios from 'axios';
+import { useAuth } from '../context/AuthContext';
+import { Navigate } from 'react-router-dom';
 
-// --- Mock Data (Restructured with 3 Levels) ---
-const mockMainEvents = [
-    {
-        id: 1000,
-        name: 'Anokha 2025',
-        subEvents: [
-            {
-                id: 1010,
-                name: 'Tech Fest Events',
-                parent: 'Anokha 2025',
-                competitions: [
-                    { id: 1011, name: 'Tech Fair', teams: [
-                        { id: 1, teamNo: 'TF001', name: 'Circuit Breakers', members: ['Alice', 'Bob', 'Charlie'] },
-                        { id: 2, teamNo: 'TF002', name: 'Code Wizards', members: ['David', 'Eve', 'Frank'] },
-                    ]},
-                    { id: 1012, name: 'RoboWars', teams: [
-                        { id: 4, teamNo: 'RW001', name: 'Metal Crushers', members: ['Judy', 'Mallory', 'Oscar'] },
-                        { id: 5, teamNo: 'RW002', name: 'The Terminators', members: ['Peggy', 'Sybil', 'Trent'] },
-                    ]},
-                ]
-            },
-            { id: 1020, name: 'Cultural Fest', parent: 'Anokha 2025', competitions: [] }
-        ]
-    },
-    {
-        id: 2000,
-        name: 'Amritotsavam 2025',
-        subEvents: [
-            {
-                id: 2010,
-                name: 'Performing Arts',
-                parent: 'Amritotsavam 2025',
-                competitions: [
-                    { id: 2011, name: 'Dance Competition', teams: [
-                        { id: 6, teamNo: 'DC001', name: 'Rhythmic Rebels', members: ['Walter', 'Victor', 'Wendy'] },
-                    ]}
-                ]
-            }
-        ]
-    }
+const API_URL = import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000';
+
+// --- IMPORTANT NOTE ---
+// The following rubric data is hardcoded because the provided backend does not
+// have an endpoint to fetch it. To make this fully dynamic, create a simple
+// 'get_rubrics' view in your `eval/views.py` and fetch the data in the
+// `useEffect` hook below.
+const MOCKED_RUBRICS = [
+    { code: 'creativity', name: 'Creativity & Originality', max_mark: 10 },
+    { code: 'technical', name: 'Technical Skill & Complexity', max_mark: 15 },
+    { code: 'presentation', name: 'Presentation & Clarity', max_mark: 10 },
+    { code: 'impact', name: 'Potential Impact & Viability', max_mark: 15 },
 ];
 
-const evaluationCriteria = [
-    { id: 'creativity', label: 'Creativity & Originality', max: 20 },
-    { id: 'technical', label: 'Technical Skill & Complexity', max: 30 },
-    { id: 'presentation', label: 'Presentation & Demo', max: 25 },
-    { id: 'completion', label: 'Project Completion & Functionality', max: 25 },
-];
 
-// --- Modal Component (Unchanged) ---
-const EvaluationModal = ({ team, criteria, isOpen, onClose, onSubmit }) => {
-    // ... (Modal code is identical to the previous version and omitted for brevity)
-};
-
-
-// --- UI Helper Components ---
-const Breadcrumbs = ({ mainEvent, subEvent, competition, setMain, setSub, setComp }) => (
-    <div className="mb-8 flex items-center gap-2 text-sm text-gray-500 font-semibold">
-        <button onClick={() => { setMain(null); setSub(null); setComp(null); }} className="flex items-center gap-2 hover:text-[#ff6a3c]"><Home size={16}/> All Events</button>
-        {mainEvent && <ChevronRight size={16} />}
-        {mainEvent && <button onClick={() => { setSub(null); setComp(null); }} className="hover:text-[#ff6a3c]">{mainEvent.name}</button>}
-        {subEvent && <ChevronRight size={16} />}
-        {subEvent && <button onClick={() => setComp(null)} className="hover:text-[#ff6a3c]">{subEvent.name}</button>}
-        {competition && <ChevronRight size={16} />}
-        {competition && <span className="text-gray-800">{competition.name}</span>}
-    </div>
-);
-
-const SelectionCard = ({ item, childName, onSelect }) => {
-    const childCount = item.subEvents?.length ?? item.competitions?.length ?? item.teams?.length;
-    return (
-        <motion.div
-            variants={{ hidden: { opacity: 0, y: 20 }, visible: { opacity: 1, y: 0 } }}
-            whileHover={{ y: -5, boxShadow: '0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1)' }}
-            className="cursor-pointer p-6 bg-white/80 border border-gray-200/90 rounded-2xl shadow-xl group backdrop-blur-lg transition-all duration-300"
-            onClick={() => onSelect(item)}
-        >
-            <h3 className="text-xl font-bold text-gray-800 mb-4">{item.name}</h3>
-            <div className="flex items-center justify-between pt-4 border-t border-gray-200">
-                <span className="text-sm font-semibold text-gray-700 flex items-center gap-2">
-                    <Users size={16}/>{childCount} {childName}
-                </span>
-                <ChevronRight className="text-gray-400 group-hover:text-[#ff6a3c] transition-colors" size={20} />
-            </div>
-        </motion.div>
-    );
-};
-
-
-// --- Main Evaluation Page Component ---
 const EvaluationPage = () => {
-    const [selectedMainEvent, setSelectedMainEvent] = useState(null);
-    const [selectedSubEvent, setSelectedSubEvent] = useState(null);
-    const [selectedCompetition, setSelectedCompetition] = useState(null);
+    const { user, isAuthenticated } = useAuth();
 
-    const [isModalOpen, setIsModalOpen] = useState(false);
-    const [teamToEvaluate, setTeamToEvaluate] = useState(null);
-    const [submittedMarks, setSubmittedMarks] = useState({});
-    const [searchQuery, setSearchQuery] = useState('');
+    // State for cascading dropdowns
+    const [mainEvents, setMainEvents] = useState([]);
+    const [subEvents, setSubEvents] = useState([]);
+    const [subSubEvents, setSubSubEvents] = useState([]);
+    const [projects, setProjects] = useState([]);
+    const [rubrics, setRubrics] = useState(MOCKED_RUBRICS); // Using mocked data for now
 
-    const handleOpenModal = (team) => { setTeamToEvaluate(team); setIsModalOpen(true); };
-    const handleCloseModal = () => { setIsModalOpen(false); setTeamToEvaluate(null); };
-    const handleMarksSubmit = (teamId, marks) => { setSubmittedMarks(prev => ({...prev, [teamId]: marks})); };
+    // State for selections
+    const [selectedMainEvent, setSelectedMainEvent] = useState('');
+    const [selectedSubEvent, setSelectedSubEvent] = useState('');
+    const [selectedSubSubEvent, setSelectedSubSubEvent] = useState('');
+    const [selectedProject, setSelectedProject] = useState('');
 
-    const filteredTeams = useMemo(() => {
-        if (!selectedCompetition) return [];
-        if (!searchQuery) return selectedCompetition.teams;
-        return selectedCompetition.teams.filter(team => team.name.toLowerCase().includes(searchQuery.toLowerCase()));
-    }, [selectedCompetition, searchQuery]);
+    // State for the evaluation form
+    const [scores, setScores] = useState({});
+    const [remarks, setRemarks] = useState('');
+    const [isDisqualified, setIsDisqualified] = useState(false);
+    
+    const [status, setStatus] = useState({ message: '', type: '' });
+    const [loading, setLoading] = useState({ main: true, sub: false, subsub: false, projects: false });
 
-    const containerVariants = { hidden: { opacity: 0 }, visible: { opacity: 1, transition: { staggerChildren: 0.07 } } };
-    const itemVariants = { hidden: { opacity: 0, y: 20 }, visible: { opacity: 1, y: 0 } };
+    // Fetch initial main events
+    useEffect(() => {
+        const fetchMainEvents = async () => {
+            try {
+                const response = await axios.post(`${API_URL}/eval/get_main_events/`);
+                setMainEvents(response.data);
+            } catch (error) {
+                console.error("Failed to fetch main events", error);
+                setStatus({ message: 'Could not load main events.', type: 'error' });
+            } finally {
+                setLoading(prev => ({ ...prev, main: false }));
+            }
+        };
+        if (isAuthenticated) {
+            fetchMainEvents();
+            // TODO: In a real app, you would fetch rubrics here too.
+            // const rubricResponse = await axios.get(`${API_URL}/eval/get-rubrics/`);
+            // setRubrics(rubricResponse.data);
+        }
+    }, [isAuthenticated]);
 
-    const getCurrentView = () => {
-        if (selectedCompetition) return 'teams';
-        if (selectedSubEvent) return 'competitions';
-        if (selectedMainEvent) return 'subEvents';
-        return 'mainEvents';
+    // Fetch sub-events when a main event is selected
+    useEffect(() => {
+        if (selectedMainEvent) {
+            const fetchSubEvents = async () => {
+                setLoading(prev => ({ ...prev, sub: true }));
+                setSubEvents([]); setSubSubEvents([]); setProjects([]);
+                setSelectedSubEvent(''); setSelectedSubSubEvent(''); setSelectedProject('');
+                try {
+                    const response = await axios.post(`${API_URL}/eval/get_subevents/${selectedMainEvent}/`);
+                    setSubEvents(response.data);
+                } catch (error) {
+                    console.error("Failed to fetch sub events", error);
+                    setStatus({ message: 'Could not load sub-events.', type: 'error' });
+                } finally {
+                    setLoading(prev => ({ ...prev, sub: false }));
+                }
+            };
+            fetchSubEvents();
+        }
+    }, [selectedMainEvent]);
+    
+    // Fetch sub-sub-events when a sub-event is selected
+     useEffect(() => {
+        if (selectedSubEvent) {
+            const fetchSubSubEvents = async () => {
+                setLoading(prev => ({ ...prev, subsub: true }));
+                setSubSubEvents([]); setProjects([]);
+                setSelectedSubSubEvent(''); setSelectedProject('');
+                try {
+                    const response = await axios.post(`${API_URL}/eval/get_subsubevents/${selectedSubEvent}/`);
+                    // NOTE: Your backend returns projects within the subsubevent list, which is unusual.
+                    // This code assumes a separate call might be better, but follows your current structure.
+                    setSubSubEvents(response.data); 
+                } catch (error) {
+                    console.error("Failed to fetch competitions", error);
+                    setStatus({ message: 'Could not load competitions.', type: 'error' });
+                } finally {
+                    setLoading(prev => ({ ...prev, subsub: false }));
+                }
+            };
+            fetchSubSubEvents();
+        }
+    }, [selectedSubEvent]);
+
+    // Fetch projects when a sub-sub-event is selected
+    useEffect(() => {
+        if (selectedSubSubEvent) {
+            const fetchProjects = async () => {
+                setLoading(prev => ({ ...prev, projects: true }));
+                setProjects([]);
+                setSelectedProject('');
+                try {
+                    // Note: Your URLconf expects an integer, but the view function is named `getProjectsByEvent`
+                    // which implies it might expect the string event_id. Passing the integer ID to match the URL.
+                    const response = await axios.get(`${API_URL}/eval/get_projects/${selectedSubSubEvent}/`);
+                    setProjects(response.data);
+                } catch (error) {
+                    console.error("Failed to fetch projects", error);
+                    setStatus({ message: 'Could not load projects for this event.', type: 'error' });
+                } finally {
+                    setLoading(prev => ({ ...prev, projects: false }));
+                }
+            };
+            fetchProjects();
+        }
+    }, [selectedSubSubEvent]);
+
+
+    const handleScoreChange = (rubricCode, value) => {
+        const score = Math.max(0, parseInt(value, 10) || 0);
+        const rubric = rubrics.find(r => r.code === rubricCode);
+        if (rubric && score > rubric.max_mark) {
+            return; // Do not allow scores greater than max
+        }
+        setScores(prev => ({ ...prev, [rubricCode]: score }));
     };
 
-    const renderContent = () => {
-        switch (getCurrentView()) {
-            case 'mainEvents':
-                return (
-                    <motion.div key="mainEvents" variants={containerVariants} initial="hidden" animate="visible" exit={{ opacity: 0 }}>
-                        <div className="text-center mb-12"><h1 className="text-4xl md:text-5xl font-bold bg-gradient-to-r from-[#ff6a3c] to-[#df9400] bg-clip-text text-transparent">Event Evaluation</h1><p className="text-gray-600 mt-3 text-lg">Select a main event to begin.</p></div>
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-                            {mockMainEvents.map(event => <SelectionCard key={event.id} item={event} childName="Sub-Events" onSelect={setSelectedMainEvent} />)}
-                        </div>
-                    </motion.div>
-                );
-            case 'subEvents':
-                return (
-                    <motion.div key="subEvents" variants={containerVariants} initial="hidden" animate="visible" exit={{ opacity: 0 }}>
-                         <div className="text-center mb-12"><h1 className="text-4xl font-bold text-gray-800">{selectedMainEvent.name}</h1><p className="text-gray-600 mt-3 text-lg">Select a sub-event.</p></div>
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-                            {selectedMainEvent.subEvents.map(event => <SelectionCard key={event.id} item={event} childName="Competitions" onSelect={setSelectedSubEvent} />)}
-                        </div>
-                    </motion.div>
-                );
-            case 'competitions':
-                return (
-                     <motion.div key="competitions" variants={containerVariants} initial="hidden" animate="visible" exit={{ opacity: 0 }}>
-                         <div className="text-center mb-12"><h1 className="text-4xl font-bold text-gray-800">{selectedSubEvent.name}</h1><p className="text-gray-600 mt-3 text-lg">Select a competition to evaluate.</p></div>
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-                            {selectedSubEvent.competitions.map(comp => <SelectionCard key={comp.id} item={comp} childName="Teams" onSelect={setSelectedCompetition} />)}
-                        </div>
-                    </motion.div>
-                );
-            case 'teams':
-                return (
-                    <motion.div key="teams" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-                        <div className="text-center mb-8"><h1 className="text-4xl font-bold bg-gradient-to-r from-[#ff6a3c] to-[#df9400] bg-clip-text text-transparent">{selectedCompetition.name}</h1><p className="text-lg text-gray-600 mt-2">Teams Registered</p></div>
-                        <div className="relative mb-6 max-w-lg mx-auto">
-                            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={20}/>
-                            <input type="text" placeholder="Search for a team..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="w-full pl-12 pr-4 py-3 rounded-lg bg-gray-50 border border-gray-300 focus:ring-2 focus:ring-[#ff6a3c] focus:outline-none transition-all" />
-                        </div>
-                        <motion.div variants={containerVariants} initial="hidden" animate="visible" className="space-y-3">
-                            {filteredTeams.map(team => (
-                                 <motion.div key={team.id} variants={itemVariants} className="flex items-center justify-between p-4 bg-white/80 border border-gray-200/90 rounded-xl shadow-lg backdrop-blur-lg">
-                                    <div className="flex-1">
-                                        <p className="font-bold text-lg text-gray-800">{team.teamNo} - {team.name}</p>
-                                        <p className="text-sm text-gray-500 flex items-center gap-2"><Users size={14}/> {team.members.join(', ')}</p>
-                                    </div>
-                                    <div className="flex items-center gap-4">
-                                        {submittedMarks[team.id] && <div className="text-right"><p className="font-bold text-lg text-green-600">{submittedMarks[team.id].total}/100</p><p className="text-xs text-green-500 flex items-center justify-end gap-1"><Check size={12}/>Evaluated</p></div>}
-                                        <button onClick={() => handleOpenModal(team)} className="flex items-center gap-2 px-4 py-2 rounded-lg bg-[#ff6a3c] text-white font-bold hover:shadow-lg hover:shadow-orange-500/50 transition-all text-sm">
-                                            <Star size={16} /> {submittedMarks[team.id] ? 'Re-evaluate' : 'Evaluate'}
-                                        </button>
-                                    </div>
-                                </motion.div>
-                            ))}
-                            {filteredTeams.length === 0 && <motion.div variants={itemVariants} className="text-center py-10"><p className="text-gray-500">No teams found.</p></motion.div>}
-                        </motion.div>
-                    </motion.div>
-                );
-            default:
-                return null;
+    const handleSubmit = async (e) => {
+        e.preventDefault();
+        if (!selectedProject) {
+            setStatus({ message: 'Please select a project to evaluate.', type: 'error' });
+            return;
         }
+        setStatus({ message: 'Submitting...', type: 'info' });
+
+        // Corrected submission data to match backend view
+        const submissionData = {
+            project_id: selectedProject,
+            evaluator_id: user.id,
+            rubric_marks: scores,
+            remarks: remarks,
+            isDisqualified: isDisqualified,
+        };
+
+        try {
+            // Corrected endpoint to pass project_id in the URL
+            await axios.post(`${API_URL}/eval/submit-evaluation/`, submissionData);
+            setStatus({ message: 'Evaluation submitted successfully!', type: 'success' });
+            // Reset form
+            setScores({});
+            setRemarks('');
+            setIsDisqualified(false);
+            setSelectedProject('');
+
+        } catch (error) {
+            const errorMessage = error.response?.data?.error || "An unknown error occurred.";
+            setStatus({ message: `Submission failed: ${errorMessage}`, type: 'error' });
+        }
+    };
+
+    if (!isAuthenticated) {
+        return <Navigate to="/login" />;
     }
 
+    const SelectGroup = ({ label, value, onChange, options, loading, disabled, valueKey='id', nameKey='name' }) => (
+        <div className="relative">
+            <label className="block mb-1.5 text-sm font-semibold text-gray-600">{label}</label>
+            <select value={value} onChange={onChange} disabled={disabled || loading}
+                className="w-full pl-4 pr-10 py-2.5 rounded-lg bg-gray-50 border border-gray-300 text-gray-800 focus:outline-none focus:ring-2 focus:ring-[#ff6a3c] focus:border-transparent transition disabled:opacity-50 disabled:cursor-not-allowed">
+                <option value="">Select...</option>
+                {options.map(opt => <option key={opt[valueKey]} value={opt[valueKey]}>{opt[nameKey]}</option>)}
+            </select>
+            {loading && <Loader className="absolute right-3 top-10 animate-spin text-gray-400" size={20} />}
+        </div>
+    );
+    
     return (
-        <>
-            <EvaluationModal team={teamToEvaluate} criteria={evaluationCriteria} isOpen={isModalOpen} onClose={handleCloseModal} onSubmit={handleMarksSubmit}/>
-            <div className="relative w-full min-h-screen px-4 sm:px-6 lg:px-8 py-24 text-gray-800 font-body">
-                <div className="absolute inset-0 bg-gradient-to-br from-white via-amber-50 to-orange-100 z-0"></div>
-                <div className="absolute top-0 left-0 w-full h-full bg-grid-gray-200/[0.4] z-0"></div>
-                
-                <div className="relative z-10 w-full max-w-5xl mx-auto">
-                    <Breadcrumbs 
-                        mainEvent={selectedMainEvent} 
-                        subEvent={selectedSubEvent} 
-                        competition={selectedCompetition}
-                        setMain={setSelectedMainEvent}
-                        setSub={setSelectedSubEvent}
-                        setComp={setSelectedCompetition}
-                    />
-                    <AnimatePresence mode="wait">
-                        {renderContent()}
-                    </AnimatePresence>
-                </div>
+        <div className="relative w-full min-h-screen px-4 sm:px-6 lg:px-8 py-20 font-body text-gray-800">
+             <div className="absolute inset-0 bg-gradient-to-br from-white via-amber-50 to-orange-100 z-0"></div>
+            <div className="relative z-10 pt-16 max-w-4xl mx-auto">
+                <motion.div initial={{ opacity: 0, y: -50 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.7 }} className="text-center mb-12">
+                    <h1 className="text-4xl sm:text-5xl md:text-6xl font-heading font-bold bg-gradient-to-r from-[#ff6a3c] via-[#df9400] to-[#ff6a3c] bg-clip-text text-transparent">
+                        Project Evaluation
+                    </h1>
+                    <p className="text-lg text-gray-600 mt-4">Select an event and project to submit your evaluation.</p>
+                </motion.div>
+
+                <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="bg-white/80 border border-gray-200/90 rounded-2xl p-8 backdrop-blur-lg shadow-xl space-y-6">
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                        <SelectGroup label="Main Event" value={selectedMainEvent} onChange={(e) => setSelectedMainEvent(e.target.value)} options={mainEvents} loading={loading.main} />
+                        <SelectGroup label="Sub-Event" value={selectedSubEvent} onChange={(e) => setSelectedSubEvent(e.target.value)} options={subEvents} loading={loading.sub} disabled={!selectedMainEvent} />
+                        <SelectGroup label="Competition" value={selectedSubSubEvent} onChange={(e) => setSelectedSubSubEvent(e.target.value)} options={subSubEvents} loading={loading.subsub} disabled={!selectedSubEvent} />
+                        <SelectGroup label="Project/Team" value={selectedProject} onChange={(e) => setSelectedProject(e.target.value)} options={projects} loading={loading.projects} disabled={!selectedSubSubEvent} valueKey="id" nameKey="team_name"/>
+                    </div>
+                </motion.div>
+
+                {selectedProject && (
+                    <motion.form onSubmit={handleSubmit} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="mt-10 bg-white/80 border border-gray-200/90 rounded-2xl p-8 backdrop-blur-lg shadow-xl space-y-6">
+                        <div className="flex items-center gap-3 mb-4">
+                            <BarChart2 className="text-[#df9400]" size={24} />
+                            <h2 className="text-2xl font-bold text-gray-800">Scoring Rubrics</h2>
+                        </div>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-4">
+                            {rubrics.map(rubric => (
+                                <div key={rubric.code}>
+                                    <label htmlFor={rubric.code} className="block mb-1.5 text-sm font-semibold text-gray-600">{rubric.name}</label>
+                                    <div className="relative">
+                                        <input type="number" id={rubric.code} name={rubric.code} value={scores[rubric.code] || ''} onChange={(e) => handleScoreChange(rubric.code, e.target.value)}
+                                            max={rubric.max_mark} min="0" placeholder="0"
+                                            className="w-full py-2.5 rounded-lg bg-gray-50 border border-gray-300 text-gray-800 text-center focus:outline-none focus:ring-2 focus:ring-[#ff6a3c] focus:border-transparent transition"
+                                        />
+                                        <span className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 text-sm">/ {rubric.max_mark}</span>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                        <hr className="border-gray-200/80 my-6"/>
+                        <div>
+                            <label htmlFor="remarks" className="block mb-1.5 text-sm font-semibold text-gray-600">Remarks</label>
+                            <textarea id="remarks" value={remarks} onChange={(e) => setRemarks(e.target.value)} rows="4" placeholder="Provide your feedback and comments here..."
+                                className="w-full p-3 rounded-lg bg-gray-50 border border-gray-300 text-gray-800 focus:outline-none focus:ring-2 focus:ring-[#ff6a3c] focus:border-transparent transition"
+                            ></textarea>
+                        </div>
+                        <div className="flex items-center">
+                            <input type="checkbox" id="isDisqualified" checked={isDisqualified} onChange={(e) => setIsDisqualified(e.target.checked)} className="h-4 w-4 rounded border-gray-300 text-[#ff6a3c] focus:ring-[#ff6a3c]" />
+                            <label htmlFor="isDisqualified" className="ml-2 block text-sm font-semibold text-red-600">Disqualify this team</label>
+                        </div>
+                         <div className="text-center pt-4">
+                            {status.message && (
+                                <p className={`mb-4 text-sm font-semibold rounded-lg p-2 ${status.type === 'success' ? 'text-green-800 bg-green-100' : status.type === 'error' ? 'text-red-800 bg-red-100' : 'text-yellow-800 bg-yellow-100'}`}>{status.message}</p>
+                            )}
+                            <button type="submit" className="w-full max-w-xs mx-auto px-6 py-3 rounded-lg bg-[#ff6a3c] text-white font-bold hover:shadow-lg hover:shadow-orange-500/50 transition-shadow disabled:bg-gray-400" disabled={status.message === 'Submitting...'}>
+                                <Send className="inline-block mr-2" size={18}/> Submit Evaluation
+                            </button>
+                        </div>
+                    </motion.form>
+                )}
             </div>
-        </>
+        </div>
     );
 };
 
 export default EvaluationPage;
+
