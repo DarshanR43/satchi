@@ -43,6 +43,7 @@ INSTALLED_APPS = [
     'api',
     'users',
     'events',
+    'eval',
 ]
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': [
