@@ -61,6 +61,26 @@ def get_subsubevents(request, sub_event_id):
                 'event_id': subsubevent.event_id
             })
         return Response(subsubevent_list, status=status.HTTP_200_OK)
+    
+def getProjectsByEvent(event_id):
+    try:
+        event = SubSubEvent.objects.get(event_id=event_id)
+        projects = Project.objects.filter(event=event)
+        project_list = []
+        for project in projects:
+            project_list.append({
+                'team_name': project.team_name,
+                'project_topic': project.project_topic,
+                'captain_name': project.captain_name,
+                'captain_email': project.captain_email,
+                'captain_phone': project.captain_phone,
+                'team_members': project.team_members,
+                'faculty_mentor_name': project.faculty_mentor_name,
+                'submitted_at': project.submitted_at
+            })
+        return project_list
+    except SubSubEvent.DoesNotExist:
+        return []
 
 @api_view(['POST'])
 def evaluation_view(request):

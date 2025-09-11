@@ -94,7 +94,7 @@ def submit_project(request, event_id):
                     project=project
                 )
 
-        return Response({"message": "Project submitted successfully.", "project": project}, status=status.HTTP_201_CREATED)
+        return Response({"message": "Project submitted successfully."}, status=status.HTTP_201_CREATED)
 
     except Exception as e:
         return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
