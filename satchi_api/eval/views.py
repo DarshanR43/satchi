@@ -79,9 +79,9 @@ def getProjectsByEvent(request, event_id):
                 'faculty_mentor_name': project.faculty_mentor_name,
                 'submitted_at': project.submitted_at
             })
-        return project_list
+        return Response(project_list, status=status.HTTP_200_OK)
     except SubSubEvent.DoesNotExist:
-        return []
+        return Response({"error": "Event not found."}, status=status.HTTP_404_NOT_FOUND)
 
 @api_view(['POST'])
 def evaluation_view(request):
