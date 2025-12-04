@@ -174,7 +174,6 @@ def update_event_users(request):
 
 
 @api_view(['GET'])
-@permission_classes([IsAuthenticated])
 def get_events(request):
     mainEvents = MainEvent.objects.all()
     respData = []

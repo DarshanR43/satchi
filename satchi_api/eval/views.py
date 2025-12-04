@@ -5,7 +5,25 @@ from events.models import MainEvent, SubEvent, SubSubEvent
 from users.models import User
 from api.models import Project, TeamMember
 from events.models import MainEvent,SubEvent,SubSubEvent
-from eval.models import Evaluation, ConsolidatedScore
+from eval.models import Evaluation
+
+from django.db import transaction, IntegrityError
+from django.shortcuts import get_object_or_404
+from rest_framework import status
+from rest_framework.decorators import api_view, permission_classes
+from rest_framework.permissions import IsAuthenticatedOrReadOnly
+from rest_framework.response import Response
+from decimal import Decimal
+
+from events.models import SubSubEvent
+from api.models import Project
+from .models import SubSubEventJudge, Evaluation, EvaluationJudgeMark
+from .serializers import (
+    CreateJudgesSerializer,
+    SubSubEventJudgeSerializer,
+    JudgeListResponseSerializer,
+    CreateEvaluationSerializer,
+)
 
 @api_view(['POST'])
 def get_main_events(request):
@@ -83,100 +101,158 @@ def getProjectsByEvent(request, event_id):
     except SubSubEvent.DoesNotExist:
         return Response({"error": "Event not found."}, status=status.HTTP_400_BAD_REQUEST)
 
-@api_view(['POST'])
-def evaluation_view(request):
-    try:
-        data = request.data
-        project_id = data.get('project_id', None)
-        evaluator_id = data.get('evaluator_id', None)
-        isDisqualified = data.get('isDisqualified', False)
-        remarks = data.get('remarks', "")
-        rubric_marks = data.get('rubric_marks', {})  # Expecting a dict of { "creativity": 15, "technical": 20 }
-
-        if not project_id or not evaluator_id:
-            return Response({"error": "Missing required fields."}, status=status.HTTP_400_BAD_REQUEST)
-
-        try:
-            project = Project.objects.get(id=project_id)
-        except Project.DoesNotExist:
-            return Response({"error": "Project not found."}, status=status.HTTP_404_NOT_FOUND)
-
-        try:
-            evaluator = User.objects.get(id=evaluator_id)
-        except User.DoesNotExist:
-            return Response({"error": "Evaluator not found."}, status=status.HTTP_404_NOT_FOUND)
-
-        consScore = ConsolidatedScore.objects.get(project=project)
-        projEval = Evaluation.objects.filter(project=project)
-        numJudges = projEval[0].number_of_judges
-        if consScore and consScore.total_evaluations > numJudges:
-            return Response({"error": "Maximum number of evaluations reached for this project."}, status=status.HTTP_400_BAD_REQUEST)
-
-        if isDisqualified:
-            rubric_marks = {}
-
-        evaluation = Evaluation(
-            project=project,
-            evaluator=evaluator,
-            isDisqualified=isDisqualified,
-            remarks=remarks,
-            rubric_marks=rubric_marks
-        )
-        evaluation.clean()  # Validate before saving
-        evaluation.save()
-
-        consolidate_scores_view(request, project_id)
-    
-        return Response({"success": "Evaluation submitted successfully."}, status=status.HTTP_201_CREATED)
-    except Exception as e:
-        return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
-from django.db import transaction
-from rest_framework.response import Response
+from django.db import transaction, IntegrityError
+from django.shortcuts import get_object_or_404
 from rest_framework import status
+from rest_framework.decorators import api_view, permission_classes
+from rest_framework.permissions import IsAuthenticatedOrReadOnly
+from rest_framework.response import Response
+from decimal import Decimal
 
-def consolidate_scores_view(request, project_id):
-    try:
-        with transaction.atomic():
-            project = Project.objects.get(id=project_id)
-            evaluations = Evaluation.objects.filter(project=project).order_by("id")
-            if not evaluations.exists():
-                return Response({"error": "No evaluations found for this project."}, status=status.HTTP_404_NOT_FOUND)
+from events.models import SubSubEvent
+from api.models import Project
+from .models import SubSubEventJudge, Evaluation, EvaluationJudgeMark
+from .serializers import (
+    CreateJudgesSerializer,
+    SubSubEventJudgeSerializer,
+    JudgeListResponseSerializer,
+    CreateEvaluationSerializer,
+)
 
-            if evaluations.count() > evaluations[0].number_of_judges:
-                return Response({"error": "Evaluations exceed the number of judges allowed."}, status=status.HTTP_400_BAD_REQUEST)
 
-            if evaluations.count() == 1:
-                consScore = ConsolidatedScore.objects.create(
-                    project=project,
-                    average_score=evaluations[0].total,
-                    highest_score=evaluations[0].total,
-                    lowest_score=evaluations[0].total,
-                    total_evaluations=1
-                )
-                consScore.save()
-                return Response({"success": "Scores consolidated successfully."}, status=status.HTTP_200_OK)
-            else:
-                consScore = ConsolidatedScore.objects.get(project=project)
-                if consScore.total_evaluations >= evaluations[0].number_of_judges:
-                    return Response({"error": "Scores have already been consolidated for the maximum number of judges."}, status=status.HTTP_400_BAD_REQUEST)
+@api_view(["POST"])
+@permission_classes([IsAuthenticatedOrReadOnly])
+def link_judges_to_subsubevent(request):
+    """
+    POST payload:
+    {
+      "subsubevent_id": 5,
+      "names": ["Judge A", "Judge B"],
+      "replace": true   # optional, default false. If true, deletes existing judges for that subsubevent first.
+    }
+    """
+    serializer = CreateJudgesSerializer(data=request.data)
+    serializer.is_valid(raise_exception=True)
+    data = serializer.validated_data
 
-                latest_eval = evaluations.last()
-                prev_count = consScore.total_evaluations
-                new_count = prev_count + 1
-                consScore.average_score = (consScore.average_score * prev_count + latest_eval.total) / new_count
-                consScore.total_evaluations = new_count
+    subsub = get_object_or_404(SubSubEvent, id=data["subsubevent_id"])
 
-                if latest_eval.total > consScore.highest_score:
-                    consScore.highest_score = latest_eval.total
-                if latest_eval.total < consScore.lowest_score:
-                    consScore.lowest_score = latest_eval.total
+    with transaction.atomic():
+        if data.get("replace"):
+            SubSubEventJudge.objects.filter(subsubevent=subsub).delete()
 
-                consScore.save()
+        created = []
+        order = 0
+        for name in data["names"]:
+            order += 1
+            # Use get_or_create to avoid duplicates
+            obj, created_flag = SubSubEventJudge.objects.get_or_create(
+                subsubevent=subsub,
+                name=name.strip(),
+                defaults={"order": order},
+            )
+            # update order if needed
+            if not created_flag and obj.order != order:
+                obj.order = order
+                obj.save(update_fields=["order"])
+            created.append({"id": obj.id, "name": obj.name, "order": obj.order})
 
-        return Response({"success": "Scores consolidated successfully."}, status=status.HTTP_200_OK)
+    return Response({"subsubevent_id": subsub.id, "judges": created}, status=status.HTTP_201_CREATED)
 
-    except Project.DoesNotExist:
-        return Response({"error": "Project not found."}, status=status.HTTP_404_NOT_FOUND)
-    except Exception as e:
-        return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+@api_view(["GET"])
+@permission_classes([IsAuthenticatedOrReadOnly])
+def list_judges_for_subsubevent(request, subsubevent_id):
+    """
+    GET /api/subsubevents/<id>/judges/
+    Returns list of judges (id, name, order)
+    """
+    subsub = get_object_or_404(SubSubEvent, id=subsubevent_id)
+    qs = SubSubEventJudge.objects.filter(subsubevent=subsub).order_by("order", "name")
+    data = [{"id": j.id, "name": j.name, "order": j.order} for j in qs]
+    return Response({"subsubevent_id": subsub.id, "judges": data}, status=status.HTTP_200_OK)
+
+
+@api_view(["POST"])
+@permission_classes([IsAuthenticatedOrReadOnly])
+def submit_evaluation_marks(request):
+    """
+    Create an Evaluation and EvaluationJudgeMark rows.
+
+    Example payload:
+    {
+      "project_id": 123,
+      "subsubevent_id": 45,
+      "is_disqualified": false,
+      "remarks": "Nice work",
+      "marks": [
+        {"judge_name": "Judge A", "mark": "78.5", "comments": "Good"},
+        {"judge_name": "Judge B", "mark": "82.00"}
+      ]
+    }
+    """
+    serializer = CreateEvaluationSerializer(data=request.data)
+    serializer.is_valid(raise_exception=True)
+    data = serializer.validated_data
+
+    project = get_object_or_404(Project, id=data["project_id"])
+    subsub = get_object_or_404(SubSubEvent, id=data["subsubevent_id"])
+
+    with transaction.atomic():
+        # Ensure uniqueness of evaluation per project+subsubevent if needed
+        evaluation, created = Evaluation.objects.get_or_create(
+            project=project,
+            subsubevent=subsub,
+            defaults={
+                "is_disqualified": data.get("is_disqualified", False),
+                "remarks": data.get("remarks", "") or "",
+            },
+        )
+        # if it already existed and you want to replace marks, you can clear them:
+        if not created:
+            # optional: clear existing marks to overwrite
+            evaluation.judge_marks.all().delete()
+            evaluation.is_disqualified = data.get("is_disqualified", evaluation.is_disqualified)
+            evaluation.remarks = data.get("remarks", evaluation.remarks)
+            evaluation.save(update_fields=["is_disqualified", "remarks"])
+
+        marks_input = data["marks"]
+        created_marks = []
+        for mi in marks_input:
+            judge_name = mi["judge_name"].strip()
+            mark_decimal = Decimal(str(mi["mark"]))
+            comments = mi.get("comments", "") or ""
+
+            # try to link to a SubSubEventJudge if exists
+            ssj = SubSubEventJudge.objects.filter(subsubevent=subsub, name=judge_name).first()
+
+            # create EvaluationJudgeMark
+            ejm = EvaluationJudgeMark.objects.create(
+                evaluation=evaluation,
+                subsubevent_judge=ssj,
+                judge_name=judge_name,
+                mark=mark_decimal,
+                comments=comments,
+            )
+            created_marks.append({"id": ejm.id, "judge_name": ejm.judge_name, "mark": str(ejm.mark)})
+
+        # recompute totals/average and save on evaluation
+        try:
+            evaluation.recalculate_scores()
+            evaluation.save()
+        except Exception as exc:
+            # Unexpected error: rollback
+            raise
+
+    # return created evaluation summary
+    resp = {
+        "evaluation_id": evaluation.id,
+        "project_id": project.id,
+        "subsubevent_id": subsub.id,
+        "number_of_judges": evaluation.number_of_judges,
+        "total": str(evaluation.total),
+        "final_score": str(evaluation.final_score),
+        "is_disqualified": evaluation.is_disqualified,
+        "marks_created": created_marks,
+    }
+    return Response(resp, status=status.HTTP_201_CREATED)
