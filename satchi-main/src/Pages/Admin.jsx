@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Plus, ChevronDown, Trash2, X, Users, Power, CheckSquare, Square, AlertTriangle } from 'lucide-react';
+import { Plus, ChevronDown, Trash2, X, Users, Power, CheckSquare, Square, AlertTriangle, ClipboardList } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { Navigate } from 'react-router-dom';
 import axios from 'axios';
@@ -15,7 +15,8 @@ const ActionButton = ({ onClick, icon: Icon, colorClass, title, disabled = false
         className={`p-2 rounded-full transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed ${
             colorClass === 'red' ? 'text-red-500 hover:bg-red-100' :
             colorClass === 'orange' ? 'text-orange-500 hover:bg-orange-100' :
-            colorClass === 'green' ? 'text-green-500 hover:bg-green-100' : ''
+            colorClass === 'green' ? 'text-green-500 hover:bg-green-100' : 
+            colorClass === 'blue' ? 'text-blue-500 hover:bg-blue-100' : ''
         }`}
     >
       <Icon className="w-5 h-5" />
@@ -196,7 +197,86 @@ const ManageRolesModal = ({ isOpen, onClose, onSave, event, eventLevel, api }) =
     );
 };
 
-const EventAccordionCard = ({ event, user, onToggleStatus, onOpenRolesModal, onOpenDeleteModal, onOpenCreateModal, isExpanded, onExpand }) => {
+const ManageJudgesModal = ({ isOpen, onClose, onSave, event, api }) => {
+    const [judges, setJudges] = useState([]);
+    const [newJudgeName, setNewJudgeName] = useState('');
+
+    useEffect(() => {
+        const fetchJudges = async () => {
+            if (event && api) {
+                try {
+                     const response = await api.get(`/events/get_judges/${event.id}/`);
+                     const data = response.data.judges || response.data || [];
+                     setJudges(Array.isArray(data) ? data : []);
+                } catch (error) {
+                    console.error("Failed to fetch judges:", error);
+                    // Use empty list if failed to fetch or endpoint doesn't exist yet
+                    setJudges([]);
+                }
+            }
+        };
+        if (isOpen) fetchJudges();
+    }, [event, isOpen, api]);
+
+    if (!isOpen || !event) return null;
+
+    const handleAddJudge = () => {
+        if (newJudgeName.trim()) {
+            setJudges([...judges, { name: newJudgeName.trim(), id: Date.now() }]);
+            setNewJudgeName('');
+        }
+    };
+
+    const handleRemoveJudge = (id) => {
+        setJudges(judges.filter(j => j.id !== id && j.name !== id));
+    };
+
+    const handleSaveClick = () => {
+        if (judges.length < 1) {
+            alert("At least one judge is required.");
+            return;
+        }
+        onSave(event.id, judges);
+    };
+
+    return (
+        <motion.div className="fixed inset-0 bg-gray-900/60 backdrop-blur-sm flex items-center justify-center z-50 p-4" onClick={onClose}>
+            <motion.div initial={{ scale: 0.9, y: 50 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.9, y: -50 }} className="bg-white rounded-2xl w-full max-w-md mx-auto shadow-xl" onClick={(e) => e.stopPropagation()}>
+                <div className="flex items-center justify-between p-5 border-b border-gray-200">
+                    <h2 className="text-2xl font-bold text-gray-800">Manage Judges: <span className="text-[#ff6a3c]">{event.name}</span></h2>
+                    <button type="button" onClick={onClose} className="p-2 rounded-full hover:bg-gray-100"><X size={24} className="text-gray-500" /></button>
+                </div>
+                <div className="p-6 space-y-4">
+                     <div className="space-y-2 max-h-64 overflow-y-auto">
+                        {judges.map((judge, idx) => (
+                            <div key={judge.id || idx} className="flex items-center justify-between bg-gray-100 p-3 rounded-lg border border-gray-200">
+                                <span className="font-semibold text-gray-700">{judge.name}</span>
+                                <button onClick={() => handleRemoveJudge(judge.id || judge.name)} className="text-red-500 hover:bg-red-100 p-1 rounded-full"><X size={16}/></button>
+                            </div>
+                        ))}
+                        {judges.length === 0 && <p className="text-gray-500 text-center italic">No judges added yet. Add at least one.</p>}
+                     </div>
+                     <div className="flex gap-2 pt-2 border-t border-gray-100">
+                        <input
+                            type="text"
+                            value={newJudgeName}
+                            onChange={(e) => setNewJudgeName(e.target.value)}
+                            placeholder="Enter judge name..."
+                            className="flex-1 p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#ff6a3c] focus:border-transparent outline-none bg-gray-50 text-gray-800"
+                            onKeyDown={(e) => e.key === 'Enter' && handleAddJudge()}
+                        />
+                        <button onClick={handleAddJudge} className="bg-gray-800 text-white px-4 py-2 rounded-lg hover:bg-gray-900 font-semibold transition">Add</button>
+                     </div>
+                </div>
+                <div className="p-4 bg-gray-50 border-t border-gray-200 flex justify-end">
+                    <button onClick={handleSaveClick} className="px-6 py-2 rounded-lg bg-[#ff6a3c] text-white font-bold hover:shadow-lg hover:shadow-orange-500/50 transition">Save Judges</button>
+                </div>
+            </motion.div>
+        </motion.div>
+    );
+};
+
+const EventAccordionCard = ({ event, user, onToggleStatus, onOpenRolesModal, onOpenDeleteModal, onOpenCreateModal, onOpenJudgesModal, isExpanded, onExpand }) => {
     return (
         <motion.div
             layout
@@ -257,6 +337,7 @@ const EventAccordionCard = ({ event, user, onToggleStatus, onOpenRolesModal, onO
                                             <div key={ssEvent.id} className="flex justify-between items-center pt-2 border-t border-dashed border-gray-200">
                                                 <p className="text-sm text-gray-600 flex items-center gap-2"><StatusPill isOpen={ssEvent.isOpen} /> {ssEvent.name}</p>
                                                 <div className="flex items-center flex-shrink-0">
+                                                    <ActionButton onClick={() => onOpenJudgesModal(ssEvent)} icon={ClipboardList} colorClass="blue" title="Manage Judges" />
                                                     <ActionButton onClick={() => onToggleStatus(ssEvent.id, 'subsub')} icon={Power} colorClass={ssEvent.isOpen ? 'green' : 'red'} title="Toggle Status" disabled={!subEvent.isOpen} />
                                                     <ActionButton onClick={() => onOpenRolesModal(ssEvent, 'subsub')} icon={Users} colorClass="orange" title="Manage Roles" />
                                                     {user?.role === 'SUPERADMIN' && <ActionButton onClick={() => onOpenDeleteModal(ssEvent.id, 'subsub', ssEvent.name)} icon={Trash2} colorClass="red" title="Delete" />}
@@ -283,6 +364,7 @@ const AdminPage = () => {
   const [isAddEventModalOpen, setIsAddEventModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [isRolesModalOpen, setIsRolesModalOpen] = useState(false);
+  const [isJudgesModalOpen, setIsJudgesModalOpen] = useState(false);
   const [modalContext, setModalContext] = useState(null);
 
   const api = useMemo(() => {
@@ -352,6 +434,17 @@ const AdminPage = () => {
     } catch (error) { console.error("Save roles error:", error); alert(error.response?.data?.error || 'Error: Could not save roles.'); }
   };
 
+  const handleSaveJudges = async (eventId, judgesList) => {
+    try {
+        // Assuming endpoint for saving judges
+        await api.post(`/events/update_judges/`, { eventId, judges: judgesList });
+        setIsJudgesModalOpen(false);
+    } catch (error) {
+        console.error("Save judges error:", error);
+        alert(error.response?.data?.error || 'Error: Could not save judges.');
+    }
+  };
+
   const handleToggleStatus = async (eventId, level) => {
     try {
       await api.post(`/events/toggle_status/${level}/${eventId}/`);
@@ -362,6 +455,7 @@ const AdminPage = () => {
   const openDeleteModal = (id, level, name) => { setModalContext({ id, level, name }); setIsDeleteModalOpen(true); };
   const openRolesModal = (event, level) => { setModalContext({ ...event, level }); setIsRolesModalOpen(true); };
   const openCreateModal = (context = {}) => { setModalContext(context); setIsAddEventModalOpen(true); };
+  const openJudgesModal = (event) => { setModalContext(event); setIsJudgesModalOpen(true); };
   const toggleExpand = (eventId) => setExpandedEventId(prevId => (prevId === eventId ? null : eventId));
 
   if (loading) return <div className="flex justify-center items-center min-h-screen text-gray-500">Loading Dashboard...</div>;
@@ -373,6 +467,7 @@ const AdminPage = () => {
       <AddEventModal isOpen={isAddEventModalOpen} onClose={() => setIsAddEventModalOpen(false)} onSave={handleCreateEvent} allEvents={events} creationContext={modalContext} />
       <ConfirmationModal isOpen={isDeleteModalOpen} onClose={() => setIsDeleteModalOpen(false)} onConfirm={handleDeleteEvent} title="Confirm Deletion" message={`Are you sure you want to delete "${modalContext?.name}"?`} />
       <ManageRolesModal isOpen={isRolesModalOpen} onClose={() => setIsRolesModalOpen(false)} onSave={handleSaveRoles} event={modalContext} eventLevel={modalContext?.level} api={api} />
+      <ManageJudgesModal isOpen={isJudgesModalOpen} onClose={() => setIsJudgesModalOpen(false)} onSave={handleSaveJudges} event={modalContext} api={api} />
 
       <div className="relative w-full min-h-screen px-4 sm:px-6 lg:px-8 py-20 font-body text-gray-800">
         <div className="absolute inset-0 bg-gradient-to-br from-white via-amber-50 to-orange-100 z-0"></div>
@@ -388,7 +483,7 @@ const AdminPage = () => {
           </div>
           <div className="space-y-4">
               {events.map((event) => (
-                  <EventAccordionCard key={event.id} event={event} user={user} onToggleStatus={handleToggleStatus} onOpenRolesModal={openRolesModal} onOpenDeleteModal={openDeleteModal} onOpenCreateModal={openCreateModal} isExpanded={expandedEventId === event.id} onExpand={() => toggleExpand(event.id)} />
+                  <EventAccordionCard key={event.id} event={event} user={user} onToggleStatus={handleToggleStatus} onOpenRolesModal={openRolesModal} onOpenDeleteModal={openDeleteModal} onOpenCreateModal={openCreateModal} onOpenJudgesModal={openJudgesModal} isExpanded={expandedEventId === event.id} onExpand={() => toggleExpand(event.id)} />
               ))}
           </div>
         </div>

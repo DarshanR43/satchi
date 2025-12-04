@@ -43,7 +43,7 @@ const StatCard = ({ icon, value, label, duration }) => {
             viewport={{ once: true }}
         >
             {icon}
-            <p className="text-4xl font-bold text-gray-900 mt-4">{animatedValue}+</p>
+            <p className="text-4xl font-bold text-gray-900 mt-4">{animatedValue}</p>
             <p className="text-sm text-gray-500 mt-2">{label}</p>
         </motion.div>
     );
@@ -70,7 +70,7 @@ const AboutUsSection = () => {
                 className="text-4xl sm:text-5xl font-heading font-bold mb-16 text-center"
             >
                 <span className="bg-gradient-to-r from-[#ff6a3c] via-[#df9400] to-[#ff6a3c] bg-clip-text text-transparent">
-                    About Anokha TechFest
+                    About GYAN
                 </span>
             </motion.h2>
 
@@ -100,10 +100,10 @@ const AboutUsSection = () => {
                 </motion.div>
                 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                   <StatCard icon={<Zap size={36} className="text-[#df9400]"/>} value="150" label="Projects Showcased" duration="2" />
-                   <StatCard icon={<Users size={36} className="text-[#df9400]"/>} value="20000" label="Footfall" duration="3" />
-                   <StatCard icon={<Lightbulb size={36} className="text-[#df9400]"/>} value="100" label="Innovative Ideas" duration="2.5" />
-                   <StatCard icon={<svg xmlns="http://www.w3.org/2000/svg" width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-[#df9400]"><path d="M12 2L2 7l10 5 10-5-10-5z"></path><path d="M2 17l10 5 10-5"></path><path d="M2 12l10 5 10-5"></path></svg>} value="50" label="Colleges Participating" duration="2" />
+                   <StatCard icon={<Zap size={36} className="text-[#df9400]"/>} value="1" label="Events" duration="2" />
+                   <StatCard icon={<Users size={36} className="text-[#df9400]"/>} value="2160" label="Participants" duration="3" />
+                   <StatCard icon={<Lightbulb size={36} className="text-[#df9400]"/>} value="360" label="Innovative Ideas" duration="2.5" />
+                   <StatCard icon={<svg xmlns="http://www.w3.org/2000/svg" width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-[#df9400]"><path d="M12 2L2 7l10 5 10-5-10-5z"></path><path d="M2 17l10 5 10-5"></path><path d="M2 12l10 5 10-5"></path></svg>} value="360" label="Teams Participated" duration="2" />
                 </div>
             </div>
         </div>

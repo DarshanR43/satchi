@@ -7,7 +7,6 @@ import { useAuth } from '../context/AuthContext';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000';
 
-// This function is still needed for CSRF protection with Django
 function getCookie(name) {
   let cookieValue = null;
   if (document.cookie && document.cookie !== '') {
@@ -27,7 +26,7 @@ const RegistrationForm = ({ event }) => {
     const { user } = useAuth();
     const navigate = useNavigate();
 
-    const eventId = event?.eventId; // Using eventId from backend now
+    const eventId = event?.eventId;
     const minTeamSize = event?.minTeamSize || 1;
     const maxTeamSize = event?.maxTeamSize || 1;
     const isFacultyMentorRequired = event?.isFacultyMentorRequired || false;

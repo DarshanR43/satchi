@@ -27,7 +27,7 @@ const HeroSection = () => {
           transition={{ duration: 1 }}
           className="text-5xl sm:text-4xl md:text-7xl font-bold mb-8 text-transparent bg-gradient-to-r from-[#df9400] to-[#ff6a3c] bg-clip-text"
         >
-          Welcome to SATCHI
+          Welcome to GYAN
         </motion.h1>
 
         <motion.p
