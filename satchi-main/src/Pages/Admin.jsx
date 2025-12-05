@@ -178,12 +178,15 @@ const ManageRolesModal = ({ isOpen, onClose, onSave, event, eventLevel, api }) =
     const handleSave = () => { onSave(event.id, eventLevel, roles); };
     const handleEmailInputChange = (e, roleType) => { setNewEmails((prev) => ({ ...prev, [roleType]: e.target.value })); };
 
+    // Determine which roles to show based on event level
+    const roleTypesToShow = eventLevel === 'subsub' ? ['managers'] : ['admins', 'managers'];
+
     return (
         <motion.div className="fixed inset-0 bg-gray-900/60 backdrop-blur-sm flex items-center justify-center z-50 p-4" onClick={onClose}>
             <motion.div initial={{ scale: 0.9, y: 50 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.9, y: -50 }} className="bg-white rounded-2xl w-full max-w-2xl mx-auto shadow-xl" onClick={(e) => e.stopPropagation()}>
                 <div className="flex items-center justify-between p-5 border-b border-gray-200"><h2 className="text-2xl font-bold text-gray-800">Manage Roles: <span className="text-[#ff6a3c]">{event.name}</span></h2><button type="button" onClick={onClose} className="p-2 rounded-full hover:bg-gray-100"><X size={24} className="text-gray-500" /></button></div>
                 <div className="p-6 space-y-6 max-h-[70vh] overflow-y-auto">
-                    {[ 'admins', 'managers' ].map(roleType => (
+                    {roleTypesToShow.map(roleType => (
                         <div className="space-y-2" key={roleType}>
                             <h4 className="font-bold text-lg text-gray-800 capitalize">{roleType}</h4>
                             <div className="space-y-2 max-h-32 overflow-y-auto pr-2">{roles[roleType]?.map((person) => (<div key={person.email} className="flex items-center justify-between bg-gray-100 p-2 rounded-md border border-gray-200"><div><p className="text-sm font-semibold text-gray-500">{person.name}</p><p className="text-xs text-gray-500">{person.email}</p></div><button onClick={() => handleRemoveRole(roleType, person.email)} className="p-1 text-red-500 hover:bg-red-100 rounded-full"><X size={14} /></button></div>))}</div>

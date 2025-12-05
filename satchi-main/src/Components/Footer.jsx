@@ -40,7 +40,8 @@ const Footer = () => {
   };
 
   return (
-    <footer className="relative w-full bg-gradient-to-t from-orange-100 via-amber-50 to-white pt-16 pb-8 text-gray-800 font-body overflow-hidden">
+    // Added 'z-0' here to prevent footer from overlapping higher z-index modals
+    <footer className="relative z-0 w-full bg-gradient-to-t from-orange-100 via-amber-50 to-white pt-16 pb-8 text-gray-800 font-body overflow-hidden">
       <div
         className="absolute inset-0 bg-grid-gray-200/[0.4] z-0"
         style={{ maskImage: 'linear-gradient(to top, black 20%, transparent 100%)' }}
@@ -106,4 +107,3 @@ const Footer = () => {
 };
 
 export default Footer;
-
