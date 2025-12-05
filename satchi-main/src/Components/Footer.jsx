@@ -86,7 +86,7 @@ const Footer = () => {
 
         <div className="mt-16 pt-8 border-t border-gray-200/80 flex flex-col items-center text-center">
           <p className="text-sm text-gray-500">
-            &copy; {new Date().getFullYear()} SATCHI Tech Fest. All rights reserved.
+            &copy; {new Date().getFullYear()} GYAN, All rights reserved.
           </p>
           <p className="text-sm text-gray-500 mt-2">
             Developed by <span className="font-semibold text-[#df9400]">Darshan & Shantharam</span>
