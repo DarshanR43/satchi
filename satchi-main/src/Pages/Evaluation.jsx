@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Send, BarChart2, Loader, Users, X, CheckCircle, ChevronDown, Search } from 'lucide-react';
+import { Send, BarChart2, Loader, Users, X, CheckCircle, ChevronDown, Search, Download } from 'lucide-react';
 import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
 import { Navigate } from 'react-router-dom';
@@ -234,6 +234,13 @@ const EvaluationPage = () => {
         }
     };
 
+    const updateProjectEvaluationFlag = (projectId, flag) => {
+        setProjects(prev => prev.map((proj) => {
+            const id = proj.project_id ?? proj.projectId ?? proj.id;
+            return String(id) === String(projectId) ? { ...proj, has_evaluation: flag } : proj;
+        }));
+    };
+
     const handleOpenEvaluation = async (project) => {
         const projectId = project.project_id ?? project.projectId ?? project.id;
         if (!projectId) {
@@ -270,6 +277,9 @@ const EvaluationPage = () => {
                     loadedScores[mark.judge_name] = mark.mark;
                 });
                 setScores(loadedScores);
+                updateProjectEvaluationFlag(projectId, true);
+            } else {
+                updateProjectEvaluationFlag(projectId, false);
             }
         } catch (error) {
             console.error('Failed to load existing evaluation', error);
@@ -329,6 +339,7 @@ const EvaluationPage = () => {
         try {
             await axios.post(`${API_URL}/eval/evaluations/submit/`, submissionData);
             setStatus({ message: 'Evaluation submitted successfully!', type: 'success' });
+            updateProjectEvaluationFlag(projectId, true);
             setTimeout(() => {
                 handleCloseModal();
                 setStatus({ message: '', type: '' });
@@ -338,6 +349,32 @@ const EvaluationPage = () => {
             console.error("Submission error", error);
             const errorMessage = error.response?.data?.error || "An unknown error occurred.";
             setStatus({ message: `Submission failed: ${errorMessage}`, type: 'error' });
+        }
+    };
+
+    const handleDownloadSummary = async () => {
+        if (!selectedSubSubEvent) {
+            setStatus({ message: 'Select a competition to download summary.', type: 'error' });
+            return;
+        }
+        try {
+            const response = await axios.get(`${API_URL}/eval/subsubevents/${selectedSubSubEvent}/summary.csv`, {
+                responseType: 'blob',
+            });
+            const blob = new Blob([response.data], { type: 'text/csv' });
+            const url = window.URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            const subEventName = subSubEvents.find((evt) => String(evt.id) === String(selectedSubSubEvent))?.name || 'summary';
+            const safeName = subEventName.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '');
+            link.href = url;
+            link.setAttribute('download', `evaluation_summary_${safeName || selectedSubSubEvent}.csv`);
+            document.body.appendChild(link);
+            link.click();
+            link.remove();
+            window.URL.revokeObjectURL(url);
+        } catch (error) {
+            console.error('Failed to download summary', error);
+            setStatus({ message: 'Unable to download summary.', type: 'error' });
         }
     };
 
@@ -366,9 +403,18 @@ const EvaluationPage = () => {
                 {/* Teams List Section - Updated to Table */}
                 {selectedSubSubEvent && (
                     <div className="space-y-6">
-                         <div className="flex items-center gap-2 mb-4">
-                            <Users className="text-[#ff6a3c]" />
-                            <h2 className="text-2xl font-bold text-gray-800">Teams / Projects</h2>
+                         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 mb-4">
+                            <div className="flex items-center gap-2">
+                                <Users className="text-[#ff6a3c]" />
+                                <h2 className="text-2xl font-bold text-gray-800">Teams / Projects</h2>
+                            </div>
+                            <button
+                                onClick={handleDownloadSummary}
+                                className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-white border border-gray-300 text-sm font-semibold text-gray-700 hover:bg-gray-100 transition disabled:opacity-50"
+                                disabled={!selectedSubSubEvent}
+                            >
+                                <Download size={16} /> Download Summary
+                            </button>
                         </div>
 
                         {loading.projects ? (
@@ -393,21 +439,22 @@ const EvaluationPage = () => {
                                         <tbody className="divide-y divide-gray-100">
                                             {projects.map((project) => {
                                                 const projectId = project.project_id ?? project.id;
+                                                const isEvaluated = Boolean(project.has_evaluation);
                                                 return (
                                                     <tr key={projectId} className="hover:bg-orange-50/50 transition-colors group">
                                                         <td className="p-4 text-gray-500 font-mono text-sm">#{projectId}</td>
-                                                    <td className="p-4 font-semibold text-gray-800 group-hover:text-[#ff6a3c] transition-colors">
-                                                        {project.team_name}
-                                                    </td>
-                                                    <td className="p-4 text-right">
-                                                        <button 
-                                                            onClick={() => handleOpenEvaluation(project)}
-                                                            className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-gray-900 text-white text-sm font-semibold hover:bg-[#ff6a3c] transition-colors shadow-sm hover:shadow-md whitespace-nowrap"
-                                                        >
-                                                            <BarChart2 size={16} /> Evaluate
-                                                        </button>
-                                                    </td>
-                                                </tr>
+                                                        <td className="p-4 font-semibold text-gray-800 group-hover:text-[#ff6a3c] transition-colors">
+                                                            {project.team_name}
+                                                        </td>
+                                                        <td className="p-4 text-right">
+                                                            <button 
+                                                                onClick={() => handleOpenEvaluation(project)}
+                                                                className={`inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-colors shadow-sm hover:shadow-md whitespace-nowrap ${isEvaluated ? 'bg-green-600 text-white hover:bg-green-700' : 'bg-gray-900 text-white hover:bg-[#ff6a3c]'}`}
+                                                            >
+                                                                <BarChart2 size={16} /> {isEvaluated ? 'Re-evaluate' : 'Evaluate'}
+                                                            </button>
+                                                        </td>
+                                                    </tr>
                                                 );
                                             })}
                                         </tbody>

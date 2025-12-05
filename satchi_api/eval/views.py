@@ -1,23 +1,22 @@
-from rest_framework.decorators import api_view
+from rest_framework.decorators import api_view, permission_classes
 from rest_framework.response import Response
 from rest_framework import status
+
 from events.models import MainEvent, SubEvent, SubSubEvent
 from users.models import User
 from api.models import Project, TeamMember
 from api.serializers import ProjectSerializer
-from events.models import MainEvent,SubEvent,SubSubEvent
 from eval.models import Evaluation
 
 from django.db import transaction, IntegrityError
+from django.db.models import Exists, OuterRef
+from django.http import HttpResponse
 from django.shortcuts import get_object_or_404
-from rest_framework import status
-from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticatedOrReadOnly
-from rest_framework.response import Response
 from decimal import Decimal
+import csv
+from io import StringIO
 
-from events.models import SubSubEvent
-from api.models import Project
 from .models import SubSubEventJudge, Evaluation, EvaluationJudgeMark
 from .serializers import (
     CreateJudgesSerializer,
@@ -88,27 +87,20 @@ def getProjectsByEvent(request, event_id):
     except SubSubEvent.DoesNotExist:
         return Response({"error": "Event not found."}, status=status.HTTP_400_BAD_REQUEST)
 
-    projects = Project.objects.filter(event=subsubevent).order_by('id')
+    projects = (
+        Project.objects.filter(event=subsubevent)
+        .annotate(
+            has_evaluation=Exists(
+                Evaluation.objects.filter(
+                    project=OuterRef("pk"),
+                    subsubevent=subsubevent,
+                )
+            )
+        )
+        .order_by("id")
+    )
     serializer = ProjectSerializer(projects, many=True)
     return Response(serializer.data, status=status.HTTP_200_OK)
-
-from django.db import transaction, IntegrityError
-from django.shortcuts import get_object_or_404
-from rest_framework import status
-from rest_framework.decorators import api_view, permission_classes
-from rest_framework.permissions import IsAuthenticatedOrReadOnly
-from rest_framework.response import Response
-from decimal import Decimal
-
-from events.models import SubSubEvent
-from api.models import Project
-from .models import SubSubEventJudge, Evaluation, EvaluationJudgeMark
-from .serializers import (
-    CreateJudgesSerializer,
-    SubSubEventJudgeSerializer,
-    JudgeListResponseSerializer,
-    CreateEvaluationSerializer,
-)
 
 
 @api_view(["POST"])
@@ -237,6 +229,68 @@ def get_evaluation_submission(request):
     }
 
     return Response(resp, status=status.HTTP_200_OK)
+
+
+@api_view(["GET"])
+@permission_classes([IsAuthenticatedOrReadOnly])
+def download_evaluation_summary(request, subsubevent_id):
+    """Generate CSV summary of evaluations for a given sub-sub event."""
+
+    subsubevent = get_object_or_404(SubSubEvent, id=subsubevent_id)
+
+    evaluations = (
+        Evaluation.objects.filter(subsubevent=subsubevent)
+        .select_related("project")
+        .prefetch_related("judge_marks")
+        .order_by("project__team_name")
+    )
+
+    judges = list(
+        SubSubEventJudge.objects.filter(subsubevent=subsubevent)
+        .order_by("order", "name")
+        .values_list("name", flat=True)
+    )
+
+    csv_buffer = StringIO()
+    writer = csv.writer(csv_buffer)
+
+    header = [
+        "SubSubEvent",
+        "Project ID",
+        "Team Name",
+        "Project Topic",
+        "Disqualified",
+    ]
+    header.extend(judges)
+    header.extend(["Total", "Final Score"])
+    writer.writerow(header)
+
+    for evaluation in evaluations:
+        mark_map = {mark.judge_name: mark for mark in evaluation.judge_marks.all()}
+
+        row = [
+            subsubevent.name,
+            evaluation.project_id,
+            evaluation.project.team_name,
+            evaluation.project.project_topic,
+            "Yes" if evaluation.is_disqualified else "No",
+        ]
+
+        for judge_name in judges:
+            mark_entry = mark_map.get(judge_name)
+            row.append(str(mark_entry.mark) if mark_entry else "")
+
+        row.append(str(evaluation.total))
+        row.append(str(evaluation.final_score))
+
+        writer.writerow(row)
+
+    csv_buffer.seek(0)
+    response = HttpResponse(csv_buffer.getvalue(), content_type="text/csv")
+    response["Content-Disposition"] = (
+        f"attachment; filename=eval_summary_{subsubevent_id}.csv"
+    )
+    return response
 
 @api_view(["POST"])
 @permission_classes([IsAuthenticatedOrReadOnly])
