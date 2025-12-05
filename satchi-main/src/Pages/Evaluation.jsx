@@ -1,23 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { ChevronDown, Send, CheckCircle, AlertTriangle, Loader, BarChart2 } from 'lucide-react';
+import { Send, BarChart2, Loader } from 'lucide-react'; // Removed unused imports
 import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
 import { Navigate } from 'react-router-dom';
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000';
+// Fixed: Removed import.meta to prevent build errors
 
-// --- IMPORTANT NOTE ---
-// The following rubric data is hardcoded because the provided backend does not
-// have an endpoint to fetch it. To make this fully dynamic, create a simple
-// 'get_rubrics' view in your `eval/views.py` and fetch the data in the
-// `useEffect` hook below.
-const MOCKED_RUBRICS = [
-    { code: 'creativity', name: 'Creativity & Originality', max_mark: 10 },
-    { code: 'technical', name: 'Technical Skill & Complexity', max_mark: 15 },
-    { code: 'presentation', name: 'Presentation & Clarity', max_mark: 10 },
-    { code: 'impact', name: 'Potential Impact & Viability', max_mark: 15 },
-];
+const API_URL = import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000';
 
 
 const EvaluationPage = () => {
@@ -28,7 +18,9 @@ const EvaluationPage = () => {
     const [subEvents, setSubEvents] = useState([]);
     const [subSubEvents, setSubSubEvents] = useState([]);
     const [projects, setProjects] = useState([]);
-    const [rubrics, setRubrics] = useState(MOCKED_RUBRICS); // Using mocked data for now
+    
+    // Changed: State for judges instead of rubrics
+    const [judges, setJudges] = useState([]); 
 
     // State for selections
     const [selectedMainEvent, setSelectedMainEvent] = useState('');
@@ -37,12 +29,12 @@ const EvaluationPage = () => {
     const [selectedProject, setSelectedProject] = useState('');
 
     // State for the evaluation form
-    const [scores, setScores] = useState({});
+    const [scores, setScores] = useState({}); // Now keys will be judge names/ids
     const [remarks, setRemarks] = useState('');
     const [isDisqualified, setIsDisqualified] = useState(false);
     
     const [status, setStatus] = useState({ message: '', type: '' });
-    const [loading, setLoading] = useState({ main: true, sub: false, subsub: false, projects: false });
+    const [loading, setLoading] = useState({ main: true, sub: false, subsub: false, projects: false, judges: false });
 
     // Fetch initial main events
     useEffect(() => {
@@ -59,9 +51,6 @@ const EvaluationPage = () => {
         };
         if (isAuthenticated) {
             fetchMainEvents();
-            // TODO: In a real app, you would fetch rubrics here too.
-            // const rubricResponse = await axios.get(`${API_URL}/eval/get-rubrics/`);
-            // setRubrics(rubricResponse.data);
         }
     }, [isAuthenticated]);
 
@@ -70,7 +59,7 @@ const EvaluationPage = () => {
         if (selectedMainEvent) {
             const fetchSubEvents = async () => {
                 setLoading(prev => ({ ...prev, sub: true }));
-                setSubEvents([]); setSubSubEvents([]); setProjects([]);
+                setSubEvents([]); setSubSubEvents([]); setProjects([]); setJudges([]);
                 setSelectedSubEvent(''); setSelectedSubSubEvent(''); setSelectedProject('');
                 try {
                     const response = await axios.post(`${API_URL}/eval/get_subevents/${selectedMainEvent}/`);
@@ -91,12 +80,10 @@ const EvaluationPage = () => {
         if (selectedSubEvent) {
             const fetchSubSubEvents = async () => {
                 setLoading(prev => ({ ...prev, subsub: true }));
-                setSubSubEvents([]); setProjects([]);
+                setSubSubEvents([]); setProjects([]); setJudges([]);
                 setSelectedSubSubEvent(''); setSelectedProject('');
                 try {
                     const response = await axios.post(`${API_URL}/eval/get_subsubevents/${selectedSubEvent}/`);
-                    // NOTE: Your backend returns projects within the subsubevent list, which is unusual.
-                    // This code assumes a separate call might be better, but follows your current structure.
                     setSubSubEvents(response.data); 
                 } catch (error) {
                     console.error("Failed to fetch competitions", error);
@@ -109,37 +96,50 @@ const EvaluationPage = () => {
         }
     }, [selectedSubEvent]);
 
-    // Fetch projects when a sub-sub-event is selected
+    // Fetch projects AND JUDGES when a sub-sub-event is selected
     useEffect(() => {
         if (selectedSubSubEvent) {
-            const fetchProjects = async () => {
-                setLoading(prev => ({ ...prev, projects: true }));
+            const fetchData = async () => {
+                setLoading(prev => ({ ...prev, projects: true, judges: true }));
                 setProjects([]);
+                setJudges([]);
                 setSelectedProject('');
+                setScores({}); // Reset scores
+
                 try {
-                    // Note: Your URLconf expects an integer, but the view function is named `getProjectsByEvent`
-                    // which implies it might expect the string event_id. Passing the integer ID to match the URL.
-                    const response = await axios.get(`${API_URL}/eval/get_projects/${selectedSubSubEvent}/`);
-                    setProjects(response.data);
+                    // Fetch Projects
+                    const projectsReq = axios.get(`${API_URL}/eval/get_projects/${selectedSubSubEvent}/`);
+                    
+                    // Fetch Judges
+                    // Using URL structure from previous context: /subsubevents/<id>/judges/
+                    // Assuming mounted under /eval/ based on other calls
+                    const judgesReq = axios.get(`${API_URL}/eval/subsubevents/${selectedSubSubEvent}/judges/`);
+
+                    const [projectsRes, judgesRes] = await Promise.all([projectsReq, judgesReq]);
+
+                    setProjects(projectsRes.data);
+                    // Handle response structure { subsubevent_id: ..., judges: [...] } or just list
+                    const judgesList = judgesRes.data.judges || judgesRes.data || [];
+                    setJudges(Array.isArray(judgesList) ? judgesList : []);
+
                 } catch (error) {
-                    console.error("Failed to fetch projects", error);
-                    setStatus({ message: 'Could not load projects for this event.', type: 'error' });
+                    console.error("Failed to fetch data", error);
+                    setStatus({ message: 'Could not load projects or judges.', type: 'error' });
                 } finally {
-                    setLoading(prev => ({ ...prev, projects: false }));
+                    setLoading(prev => ({ ...prev, projects: false, judges: false }));
                 }
             };
-            fetchProjects();
+            fetchData();
         }
     }, [selectedSubSubEvent]);
 
 
-    const handleScoreChange = (rubricCode, value) => {
-        const score = Math.max(0, parseInt(value, 10) || 0);
-        const rubric = rubrics.find(r => r.code === rubricCode);
-        if (rubric && score > rubric.max_mark) {
-            return; // Do not allow scores greater than max
-        }
-        setScores(prev => ({ ...prev, [rubricCode]: score }));
+    const handleScoreChange = (judgeName, value) => {
+        // Allow decimals, ensure positive
+        const val = parseFloat(value);
+        if (val < 0) return;
+        
+        setScores(prev => ({ ...prev, [judgeName]: value }));
     };
 
     const handleSubmit = async (e) => {
@@ -148,20 +148,33 @@ const EvaluationPage = () => {
             setStatus({ message: 'Please select a project to evaluate.', type: 'error' });
             return;
         }
+        
+        // Validate that we have marks
+        const marksPayload = judges.map(judge => ({
+            judge_name: judge.name,
+            mark: scores[judge.name] || "0",
+            comments: "" // Optional
+        })).filter(m => m.mark !== "" && m.mark !== null);
+
+        if (marksPayload.length === 0) {
+            setStatus({ message: 'Please enter at least one score.', type: 'error' });
+            return;
+        }
+
         setStatus({ message: 'Submitting...', type: 'info' });
 
-        // Corrected submission data to match backend view
+        // Structure matches CreateEvaluationSerializer in backend
         const submissionData = {
-            project_id: selectedProject,
-            evaluator_id: user.id,
-            rubric_marks: scores,
+            project_id: parseInt(selectedProject),
+            subsubevent_id: parseInt(selectedSubSubEvent),
+            is_disqualified: isDisqualified,
             remarks: remarks,
-            isDisqualified: isDisqualified,
+            marks: marksPayload
         };
 
         try {
-            // Corrected endpoint to pass project_id in the URL
-            await axios.post(`${API_URL}/eval/submit-evaluation/`, submissionData);
+            // Using endpoint from urls.py: evaluations/submit/
+            await axios.post(`${API_URL}/eval/evaluations/submit/`, submissionData);
             setStatus({ message: 'Evaluation submitted successfully!', type: 'success' });
             // Reset form
             setScores({});
@@ -170,6 +183,7 @@ const EvaluationPage = () => {
             setSelectedProject('');
 
         } catch (error) {
+            console.error("Submission error", error);
             const errorMessage = error.response?.data?.error || "An unknown error occurred.";
             setStatus({ message: `Submission failed: ${errorMessage}`, type: 'error' });
         }
@@ -215,22 +229,34 @@ const EvaluationPage = () => {
                     <motion.form onSubmit={handleSubmit} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="mt-10 bg-white/80 border border-gray-200/90 rounded-2xl p-8 backdrop-blur-lg shadow-xl space-y-6">
                         <div className="flex items-center gap-3 mb-4">
                             <BarChart2 className="text-[#df9400]" size={24} />
-                            <h2 className="text-2xl font-bold text-gray-800">Scoring Rubrics</h2>
+                            <h2 className="text-2xl font-bold text-gray-800">Judge Scores</h2>
                         </div>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-4">
-                            {rubrics.map(rubric => (
-                                <div key={rubric.code}>
-                                    <label htmlFor={rubric.code} className="block mb-1.5 text-sm font-semibold text-gray-600">{rubric.name}</label>
-                                    <div className="relative">
-                                        <input type="number" id={rubric.code} name={rubric.code} value={scores[rubric.code] || ''} onChange={(e) => handleScoreChange(rubric.code, e.target.value)}
-                                            max={rubric.max_mark} min="0" placeholder="0"
-                                            className="w-full py-2.5 rounded-lg bg-gray-50 border border-gray-300 text-gray-800 text-center focus:outline-none focus:ring-2 focus:ring-[#ff6a3c] focus:border-transparent transition"
-                                        />
-                                        <span className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 text-sm">/ {rubric.max_mark}</span>
+                        
+                        {loading.judges ? (
+                             <div className="text-center py-8 text-gray-500"><Loader className="animate-spin inline mr-2"/> Loading judges...</div>
+                        ) : judges.length === 0 ? (
+                             <div className="text-center py-8 text-red-500 font-semibold bg-red-50 rounded-lg">No judges found for this competition. Please add judges in the Admin Dashboard first.</div>
+                        ) : (
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-4">
+                                {judges.map(judge => (
+                                    <div key={judge.id || judge.name}>
+                                        <label htmlFor={`judge-${judge.id}`} className="block mb-1.5 text-sm font-semibold text-gray-600">{judge.name}</label>
+                                        <div className="relative">
+                                            <input 
+                                                type="number" 
+                                                step="0.01"
+                                                id={`judge-${judge.id}`} 
+                                                value={scores[judge.name] || ''} 
+                                                onChange={(e) => handleScoreChange(judge.name, e.target.value)}
+                                                placeholder="Enter Total Mark"
+                                                className="w-full py-2.5 rounded-lg bg-gray-50 border border-gray-300 text-gray-800 text-center focus:outline-none focus:ring-2 focus:ring-[#ff6a3c] focus:border-transparent transition"
+                                            />
+                                        </div>
                                     </div>
-                                </div>
-                            ))}
-                        </div>
+                                ))}
+                            </div>
+                        )}
+
                         <hr className="border-gray-200/80 my-6"/>
                         <div>
                             <label htmlFor="remarks" className="block mb-1.5 text-sm font-semibold text-gray-600">Remarks</label>
@@ -246,7 +272,7 @@ const EvaluationPage = () => {
                             {status.message && (
                                 <p className={`mb-4 text-sm font-semibold rounded-lg p-2 ${status.type === 'success' ? 'text-green-800 bg-green-100' : status.type === 'error' ? 'text-red-800 bg-red-100' : 'text-yellow-800 bg-yellow-100'}`}>{status.message}</p>
                             )}
-                            <button type="submit" className="w-full max-w-xs mx-auto px-6 py-3 rounded-lg bg-[#ff6a3c] text-white font-bold hover:shadow-lg hover:shadow-orange-500/50 transition-shadow disabled:bg-gray-400" disabled={status.message === 'Submitting...'}>
+                            <button type="submit" className="w-full max-w-xs mx-auto px-6 py-3 rounded-lg bg-[#ff6a3c] text-white font-bold hover:shadow-lg hover:shadow-orange-500/50 transition-shadow disabled:bg-gray-400 disabled:cursor-not-allowed" disabled={status.message === 'Submitting...' || judges.length === 0}>
                                 <Send className="inline-block mr-2" size={18}/> Submit Evaluation
                             </button>
                         </div>
@@ -258,4 +284,3 @@ const EvaluationPage = () => {
 };
 
 export default EvaluationPage;
-

@@ -200,18 +200,23 @@ const ManageRolesModal = ({ isOpen, onClose, onSave, event, eventLevel, api }) =
 const ManageJudgesModal = ({ isOpen, onClose, onSave, event, api }) => {
     const [judges, setJudges] = useState([]);
     const [newJudgeName, setNewJudgeName] = useState('');
+    const [hasExistingJudges, setHasExistingJudges] = useState(false);
 
     useEffect(() => {
         const fetchJudges = async () => {
             if (event && api) {
                 try {
-                     const response = await api.get(`/events/get_judges/${event.id}/`);
+                     // URL matching urls.py: subsubevents/<int:subsubevent_id>/judges/
+                     const response = await api.get(`/eval/subsubevents/${event.id}/judges/`);
                      const data = response.data.judges || response.data || [];
-                     setJudges(Array.isArray(data) ? data : []);
+                     const judgesList = Array.isArray(data) ? data : [];
+                     setJudges(judgesList);
+                     // Set initial state for "replace" logic
+                     setHasExistingJudges(judgesList.length > 0);
                 } catch (error) {
                     console.error("Failed to fetch judges:", error);
-                    // Use empty list if failed to fetch or endpoint doesn't exist yet
                     setJudges([]);
+                    setHasExistingJudges(false);
                 }
             }
         };
@@ -236,7 +241,14 @@ const ManageJudgesModal = ({ isOpen, onClose, onSave, event, api }) => {
             alert("At least one judge is required.");
             return;
         }
-        onSave(event.id, judges);
+        // Extract names as strings for the API payload
+        const judgeNames = judges.map(j => j.name);
+        
+        // Logic: if it's first time (no existing judges), replace = false. 
+        // If modified/added later (has existing judges), replace = true.
+        const replace = hasExistingJudges;
+        
+        onSave(event.id, judgeNames, replace);
     };
 
     return (
@@ -434,10 +446,14 @@ const AdminPage = () => {
     } catch (error) { console.error("Save roles error:", error); alert(error.response?.data?.error || 'Error: Could not save roles.'); }
   };
 
-  const handleSaveJudges = async (eventId, judgesList) => {
+  const handleSaveJudges = async (eventId, judgeNames, replace) => {
     try {
-        // Assuming endpoint for saving judges
-        await api.post(`/events/update_judges/`, { eventId, judges: judgesList });
+        // URL matching urls.py: subsubevents/judges/link/
+        await api.post(`/eval/subsubevents/judges/link/`, { 
+            subsubevent_id: eventId, 
+            names: judgeNames,
+            replace: replace 
+        });
         setIsJudgesModalOpen(false);
     } catch (error) {
         console.error("Save judges error:", error);
