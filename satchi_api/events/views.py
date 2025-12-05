@@ -1,11 +1,15 @@
-from django.shortcuts import get_object_or_404
+from collections import defaultdict
+
 from django.db import transaction
-from rest_framework.decorators import api_view,permission_classes
-from rest_framework.response import Response
+from django.db.models import Prefetch
+from django.shortcuts import get_object_or_404
 from rest_framework import status
-from .models import MainEvent, SubEvent, SubSubEvent
-from users.models import User, EventUserMapping  # adjust app label if different
+from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
+from rest_framework.response import Response
+
+from .models import MainEvent, SubEvent, SubSubEvent
+from users.models import EventUserMapping, User  # adjust app label if different
 from users.services.roles import promote_user_if_higher
 
 @api_view(["POST"])
@@ -220,58 +224,217 @@ def get_events(request):
 
     return Response(respData, status=status.HTTP_200_OK)
 
+ROLE_PRIORITY = {
+    User.Role.SUPERADMIN: 0,
+    User.Role.EVENTADMIN: 1,
+    User.Role.EVENTMANAGER: 2,
+    User.Role.SUBEVENTADMIN: 3,
+    User.Role.SUBEVENTMANAGER: 4,
+    User.Role.SUBSUBEVENTMANAGER: 5,
+    User.Role.COORDINATOR: 6,
+    User.Role.PARTICIPANT: 7,
+}
+
+
+def _pick_highest_role(roles, fallback=None):
+    if not roles and fallback:
+        return fallback
+    if not roles:
+        return None
+    return sorted(roles, key=lambda role: ROLE_PRIORITY.get(role, 99))[0]
+
+
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
 def admin_data(request):
-    """
-    Return all events where the current user is mapped, with their role.
-    """
+    """Return a hierarchical listing of events the user can manage, preserving level metadata."""
+
     user = request.user
-    mappings = EventUserMapping.objects.filter(user=user.id).select_related(
-        "main_event", "sub_event", "sub_sub_event"
+    mappings = list(
+        EventUserMapping.objects.filter(user=user)
+        .select_related(
+            "main_event",
+            "sub_event",
+            "sub_event__parent_event",
+            "sub_sub_event",
+            "sub_sub_event__parent_event",
+            "sub_sub_event__parent_subevent",
+        )
     )
 
-    resp = []
+    main_roles = defaultdict(set)
+    sub_roles = defaultdict(set)
+    subsub_roles = defaultdict(set)
 
-    for m in mappings:
-        if m.main_event:
-            resp.append({
+    accessible_main_ids = set()
+    accessible_sub_ids = set()
+
+    full_main_ids = set()
+    full_sub_ids = set()
+
+    subs_by_main = defaultdict(set)
+    subsubs_by_sub = defaultdict(set)
+
+    MAIN_TREE_ROLES = {User.Role.SUPERADMIN, User.Role.EVENTADMIN, User.Role.EVENTMANAGER}
+    SUB_TREE_ROLES = {
+        User.Role.SUPERADMIN,
+        User.Role.EVENTADMIN,
+        User.Role.EVENTMANAGER,
+        User.Role.SUBEVENTADMIN,
+        User.Role.SUBEVENTMANAGER,
+    }
+
+    for mapping in mappings:
+        if mapping.main_event_id:
+            main_id = mapping.main_event_id
+            accessible_main_ids.add(main_id)
+            main_roles[main_id].add(mapping.user_role)
+            if mapping.user_role in MAIN_TREE_ROLES:
+                full_main_ids.add(main_id)
+
+        if mapping.sub_event_id:
+            sub = mapping.sub_event
+            sub_id = sub.id
+            accessible_sub_ids.add(sub_id)
+            sub_roles[sub_id].add(mapping.user_role)
+            parent_main_id = sub.parent_event_id
+            accessible_main_ids.add(parent_main_id)
+            subs_by_main[parent_main_id].add(sub_id)
+            if mapping.user_role in SUB_TREE_ROLES:
+                full_sub_ids.add(sub_id)
+            if mapping.user_role in MAIN_TREE_ROLES:
+                full_main_ids.add(parent_main_id)
+
+        if mapping.sub_sub_event_id:
+            subsub = mapping.sub_sub_event
+            subsub_id = subsub.id
+            subsub_roles[subsub_id].add(mapping.user_role)
+            parent_sub_id = subsub.parent_subevent_id
+            parent_main_id = subsub.parent_event_id
+            accessible_sub_ids.add(parent_sub_id)
+            accessible_main_ids.add(parent_main_id)
+            subs_by_main[parent_main_id].add(parent_sub_id)
+            subsubs_by_sub[parent_sub_id].add(subsub_id)
+
+    # Superusers can see the entire tree even without explicit mappings.
+    if user.is_superuser:
+        all_main_ids = set(MainEvent.objects.values_list("id", flat=True))
+        accessible_main_ids |= all_main_ids
+        full_main_ids |= all_main_ids
+        for mid in all_main_ids:
+            main_roles[mid].add(User.Role.SUPERADMIN)
+
+    target_main_ids = accessible_main_ids | full_main_ids
+    if not target_main_ids:
+        return Response([], status=status.HTTP_200_OK)
+
+    sub_prefetch = Prefetch(
+        "subevents",
+        queryset=SubEvent.objects.order_by("id").prefetch_related(
+            Prefetch("subsubevents", queryset=SubSubEvent.objects.order_by("id"))
+        ),
+    )
+
+    main_queryset = (
+        MainEvent.objects.filter(id__in=target_main_ids)
+        .order_by("id")
+        .prefetch_related(sub_prefetch)
+    )
+
+    response_payload = []
+
+    for main in main_queryset:
+        relevant_sub_ids = subs_by_main.get(main.id, set())
+        include_all_subs = main.id in full_main_ids or user.is_superuser
+        sub_events = (
+            list(main.subevents.all())
+            if include_all_subs
+            else [sub for sub in main.subevents.all() if sub.id in relevant_sub_ids]
+        )
+
+        main_role_candidates = set(main_roles.get(main.id, set()))
+        for sub_id in relevant_sub_ids:
+            main_role_candidates |= sub_roles.get(sub_id, set())
+            for subsub_id in subsubs_by_sub.get(sub_id, set()):
+                main_role_candidates |= subsub_roles.get(subsub_id, set())
+        if include_all_subs and not main_role_candidates:
+            main_role_candidates.add(User.Role.SUPERADMIN if user.is_superuser else User.Role.EVENTADMIN)
+
+        main_role = _pick_highest_role(main_role_candidates)
+
+        response_payload.append(
+            {
                 "level": "main",
-                "id": m.main_event.id,
-                "eventId": m.main_event.event_id,
-                "name": m.main_event.name,
-                "description": m.main_event.description,
-                "isOpen": m.main_event.isOpen,
-                "role": m.user_role,
-            })
-        if m.sub_event:
-            resp.append({
-                "level": "sub",
-                "id": m.sub_event.id,
-                "eventId": m.sub_event.event_id,
-                "name": m.sub_event.name,
-                "description": m.sub_event.description,
-                "isOpen": m.sub_event.isOpen,
-                "role": m.user_role,
-                "parentId": m.sub_event.parent_event.id,
-                "parentName": m.sub_event.parent_event.name,
-            })
-        if m.sub_sub_event:
-            resp.append({
-                "level": "subsub",
-                "id": m.sub_sub_event.id,
-                "eventId": m.sub_sub_event.event_id,
-                "name": m.sub_sub_event.name,
-                "description": m.sub_sub_event.description,
-                "isOpen": m.sub_sub_event.isOpen,
-                "role": m.user_role,
-                "parentId": m.sub_sub_event.parent_event.id,
-                "parentName": m.sub_sub_event.parent_event.name,
-                "subParentId": m.sub_sub_event.parent_subevent.id,
-                "subParentName": m.sub_sub_event.parent_subevent.name,
-            })
+                "id": main.id,
+                "eventId": main.event_id,
+                "name": main.name,
+                "description": main.description,
+                "isOpen": main.isOpen,
+                "role": main_role,
+            }
+        )
 
-    return Response(resp, status=status.HTTP_200_OK)
+        for sub_event in sub_events:
+            include_all_subsubs = include_all_subs or sub_event.id in full_sub_ids
+            relevant_subsub_ids = subsubs_by_sub.get(sub_event.id, set())
+            subsub_events = (
+                list(sub_event.subsubevents.all())
+                if include_all_subsubs
+                else [
+                    ss_event
+                    for ss_event in sub_event.subsubevents.all()
+                    if ss_event.id in relevant_subsub_ids
+                ]
+            )
+
+            sub_role_candidates = set(sub_roles.get(sub_event.id, set()))
+            if not include_all_subsubs:
+                for subsub_id in relevant_subsub_ids:
+                    sub_role_candidates |= subsub_roles.get(subsub_id, set())
+            if include_all_subsubs and not sub_role_candidates and main_role:
+                sub_role_candidates.add(main_role)
+
+            sub_role = _pick_highest_role(sub_role_candidates, fallback=main_role)
+
+            response_payload.append(
+                {
+                    "level": "sub",
+                    "id": sub_event.id,
+                    "eventId": sub_event.event_id,
+                    "name": sub_event.name,
+                    "description": sub_event.description,
+                    "isOpen": sub_event.isOpen,
+                    "role": sub_role,
+                    "parentId": main.id,
+                    "parentName": main.name,
+                }
+            )
+
+            for subsub_event in subsub_events:
+                subsub_role_candidates = set(subsub_roles.get(subsub_event.id, set()))
+                if not subsub_role_candidates:
+                    fallback_role = sub_role or main_role
+                else:
+                    fallback_role = None
+                subsub_role = _pick_highest_role(subsub_role_candidates, fallback=fallback_role)
+
+                response_payload.append(
+                    {
+                        "level": "subsub",
+                        "id": subsub_event.id,
+                        "eventId": subsub_event.event_id,
+                        "name": subsub_event.name,
+                        "description": subsub_event.description,
+                        "isOpen": subsub_event.isOpen,
+                        "role": subsub_role,
+                        "parentId": main.id,
+                        "parentName": main.name,
+                        "subParentId": sub_event.id,
+                        "subParentName": sub_event.name,
+                    }
+                )
+
+    return Response(response_payload, status=status.HTTP_200_OK)
 
 @api_view(["GET"])
 def get_event_users(request, level, event_id):

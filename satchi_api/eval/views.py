@@ -88,6 +88,7 @@ def getProjectsByEvent(request, event_id):
         project_list = []
         for project in projects:
             project_list.append({
+                'project_id': project.id,
                 'team_name': project.team_name,
                 'project_topic': project.project_topic,
                 'captain_name': project.captain_name,
@@ -173,6 +174,19 @@ def list_judges_for_subsubevent(request, subsubevent_id):
     return Response({"subsubevent_id": subsub.id, "judges": data}, status=status.HTTP_200_OK)
 
 
+import logging
+from decimal import Decimal, InvalidOperation
+
+from django.db import transaction
+from django.shortcuts import get_object_or_404
+from rest_framework.decorators import api_view, permission_classes
+from rest_framework.permissions import IsAuthenticatedOrReadOnly
+from rest_framework.response import Response
+from rest_framework import status
+from rest_framework.exceptions import ValidationError
+
+logger = logging.getLogger(__name__)
+
 @api_view(["POST"])
 @permission_classes([IsAuthenticatedOrReadOnly])
 def submit_evaluation_marks(request):
@@ -191,58 +205,150 @@ def submit_evaluation_marks(request):
       ]
     }
     """
+    # ---- Basic request-level debug info ----
+    try:
+        remote_addr = request.META.get("REMOTE_ADDR")
+    except Exception:
+        remote_addr = None
+
+    logger.debug("submit_evaluation_marks called by user=%s (id=%s) ip=%s",
+                 getattr(request.user, "username", None),
+                 getattr(request.user, "id", None),
+                 remote_addr)
+    logger.debug("Request method=%s path=%s content_type=%s",
+                 request.method, request.path, request.content_type)
+    # Log headers (careful not to log sensitive auth token if present)
+    try:
+        headers = {k: v for k, v in request.headers.items() if k.lower() not in ("authorization", "cookie")}
+        logger.debug("Request headers (sanitized): %s", headers)
+    except Exception:
+        logger.debug("Could not read request.headers")
+
+    # Log raw body for debugging (may be large; consider removing in prod)
+    try:
+        raw = request.body.decode("utf-8")
+        logger.debug("Raw request body: %s", raw)
+    except Exception:
+        logger.debug("Could not decode request.body")
+
+    # ---- Serializer validation ----
     serializer = CreateEvaluationSerializer(data=request.data)
-    serializer.is_valid(raise_exception=True)
+    if not serializer.is_valid():
+        # Log errors explicitly before raising
+        logger.error("CreateEvaluationSerializer.is_valid() failed: errors=%s data=%s",
+                     serializer.errors, request.data)
+        # re-raise to preserve original behavior (DRF will convert to 400 response)
+        raise ValidationError(serializer.errors)
+
     data = serializer.validated_data
+    logger.debug("Serializer validated_data: %s", data)
 
-    project = get_object_or_404(Project, id=data["project_id"])
-    subsub = get_object_or_404(SubSubEvent, id=data["subsubevent_id"])
+    # ---- Object lookups with logging ----
+    try:
+        project = get_object_or_404(Project, id=data["project_id"])
+        logger.debug("Found project id=%s", project.id)
+    except Exception as exc:
+        logger.exception("Failed to get Project with id=%s", data.get("project_id"))
+        raise
 
-    with transaction.atomic():
-        # Ensure uniqueness of evaluation per project+subsubevent if needed
-        evaluation, created = Evaluation.objects.get_or_create(
-            project=project,
-            subsubevent=subsub,
-            defaults={
-                "is_disqualified": data.get("is_disqualified", False),
-                "remarks": data.get("remarks", "") or "",
-            },
-        )
-        # if it already existed and you want to replace marks, you can clear them:
-        if not created:
-            # optional: clear existing marks to overwrite
-            evaluation.judge_marks.all().delete()
-            evaluation.is_disqualified = data.get("is_disqualified", evaluation.is_disqualified)
-            evaluation.remarks = data.get("remarks", evaluation.remarks)
-            evaluation.save(update_fields=["is_disqualified", "remarks"])
+    try:
+        subsub = get_object_or_404(SubSubEvent, id=data["subsubevent_id"])
+        logger.debug("Found SubSubEvent id=%s", subsub.id)
+    except Exception as exc:
+        logger.exception("Failed to get SubSubEvent with id=%s", data.get("subsubevent_id"))
+        raise
 
-        marks_input = data["marks"]
-        created_marks = []
-        for mi in marks_input:
-            judge_name = mi["judge_name"].strip()
-            mark_decimal = Decimal(str(mi["mark"]))
-            comments = mi.get("comments", "") or ""
-
-            # try to link to a SubSubEventJudge if exists
-            ssj = SubSubEventJudge.objects.filter(subsubevent=subsub, name=judge_name).first()
-
-            # create EvaluationJudgeMark
-            ejm = EvaluationJudgeMark.objects.create(
-                evaluation=evaluation,
-                subsubevent_judge=ssj,
-                judge_name=judge_name,
-                mark=mark_decimal,
-                comments=comments,
+    # ---- Atomic create/update and per-mark debug ----
+    created_marks = []
+    try:
+        with transaction.atomic():
+            evaluation, created = Evaluation.objects.get_or_create(
+                project=project,
+                subsubevent=subsub,
+                defaults={
+                    "is_disqualified": data.get("is_disqualified", False),
+                    "remarks": data.get("remarks", "") or "",
+                },
             )
-            created_marks.append({"id": ejm.id, "judge_name": ejm.judge_name, "mark": str(ejm.mark)})
+            if created:
+                logger.info("Created new Evaluation id=%s for project=%s subsub=%s",
+                            evaluation.id, project.id, subsub.id)
+            else:
+                logger.info("Using existing Evaluation id=%s for project=%s subsub=%s (clearing existing marks)",
+                            evaluation.id, project.id, subsub.id)
+                # optional: clear existing marks to overwrite
+                deleted_count, _ = evaluation.judge_marks.all().delete()
+                logger.debug("Deleted %d existing EvaluationJudgeMark rows for evaluation id=%s",
+                             deleted_count, evaluation.id)
+                evaluation.is_disqualified = data.get("is_disqualified", evaluation.is_disqualified)
+                evaluation.remarks = data.get("remarks", evaluation.remarks)
+                evaluation.save(update_fields=["is_disqualified", "remarks"])
 
-        # recompute totals/average and save on evaluation
-        try:
-            evaluation.recalculate_scores()
-            evaluation.save()
-        except Exception as exc:
-            # Unexpected error: rollback
-            raise
+            marks_input = data.get("marks", [])
+            if not isinstance(marks_input, (list, tuple)):
+                logger.error("marks must be a list/tuple, got: %s", type(marks_input))
+                raise ValidationError({"marks": "Expected a list of mark objects."})
+
+            for idx, mi in enumerate(marks_input, start=1):
+                logger.debug("Processing mark #%d: %s", idx, mi)
+                judge_name = (mi.get("judge_name") or "").strip()
+                if not judge_name:
+                    logger.error("Empty judge_name at marks index %d: %s", idx, mi)
+                    raise ValidationError({"marks": {idx - 1: {"judge_name": "This field may not be blank."}}})
+
+                # Parse/validate mark value robustly
+                raw_mark = mi.get("mark")
+                if raw_mark in (None, ""):
+                    logger.error("Missing mark value for judge '%s' at index %d", judge_name, idx)
+                    raise ValidationError({"marks": {idx - 1: {"mark": "This field is required."}}})
+                try:
+                    # Ensure string conversion so Decimal doesn't interpret floats unexpectedly
+                    mark_decimal = Decimal(str(raw_mark))
+                except (InvalidOperation, ValueError, TypeError) as exc:
+                    logger.exception("Invalid mark for judge '%s' at index %d: raw_mark=%r", judge_name, idx, raw_mark)
+                    raise ValidationError({"marks": {idx - 1: {"mark": f"Invalid numeric value: {raw_mark}"}}})
+
+                comments = mi.get("comments", "") or ""
+
+                # try to link to a SubSubEventJudge if exists
+                try:
+                    ssj = SubSubEventJudge.objects.filter(subsubevent=subsub, name=judge_name).first()
+                    logger.debug("Linked SubSubEventJudge for name='%s': %s", judge_name, getattr(ssj, "id", None))
+                except Exception:
+                    logger.exception("Error querying SubSubEventJudge for name='%s'", judge_name)
+                    ssj = None
+
+                # create EvaluationJudgeMark
+                ejm = EvaluationJudgeMark.objects.create(
+                    evaluation=evaluation,
+                    subsubevent_judge=ssj,
+                    judge_name=judge_name,
+                    mark=mark_decimal,
+                    comments=comments,
+                )
+                created_marks.append({"id": ejm.id, "judge_name": ejm.judge_name, "mark": str(ejm.mark)})
+                logger.info("Created EvaluationJudgeMark id=%s judge=%s mark=%s", ejm.id, ejm.judge_name, ejm.mark)
+
+            # recompute totals/average and save on evaluation
+            try:
+                evaluation.recalculate_scores()
+                evaluation.save()
+                logger.debug("Recalculated evaluation scores: total=%s final_score=%s number_of_judges=%s",
+                             getattr(evaluation, "total", None),
+                             getattr(evaluation, "final_score", None),
+                             getattr(evaluation, "number_of_judges", None))
+            except Exception:
+                logger.exception("Failed to recalculate/save evaluation id=%s", evaluation.id)
+                # re-raise to rollback transaction
+                raise
+
+    except ValidationError:
+        # already logged specifics above, re-raise to return DRF 400 response
+        raise
+    except Exception:
+        # Log unexpected exceptions (with stack trace) then re-raise so middleware/DRF handles it
+        logger.exception("Unexpected error in submit_evaluation_marks")
+        raise
 
     # return created evaluation summary
     resp = {
@@ -250,9 +356,10 @@ def submit_evaluation_marks(request):
         "project_id": project.id,
         "subsubevent_id": subsub.id,
         "number_of_judges": evaluation.number_of_judges,
-        "total": str(evaluation.total),
-        "final_score": str(evaluation.final_score),
+        "total": str(evaluation.total) if evaluation.total is not None else None,
+        "final_score": str(evaluation.final_score) if evaluation.final_score is not None else None,
         "is_disqualified": evaluation.is_disqualified,
         "marks_created": created_marks,
     }
+    logger.debug("submit_evaluation_marks completed successfully: %s", resp)
     return Response(resp, status=status.HTTP_201_CREATED)
