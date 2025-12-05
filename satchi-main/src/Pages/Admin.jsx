@@ -289,6 +289,26 @@ const ManageJudgesModal = ({ isOpen, onClose, onSave, event, api }) => {
 };
 
 const EventAccordionCard = ({ event, user, onToggleStatus, onOpenRolesModal, onOpenDeleteModal, onOpenCreateModal, onOpenJudgesModal, isExpanded, onExpand }) => {
+  const normalizeRole = (role) => (role || '').toUpperCase();
+  const mainRole = normalizeRole(event.role);
+  const canToggleMain = ['SUPERADMIN', 'EVENTADMIN'].includes(mainRole);
+
+  const canToggleSubEvent = (subEvent) => {
+    const subRole = normalizeRole(subEvent.role || event.role);
+    return ['SUPERADMIN', 'EVENTADMIN', 'SUBEVENTADMIN'].includes(subRole);
+  };
+
+  const canToggleSubSubEvent = (subEvent, subSubEvent) => {
+    const ssRole = normalizeRole(subSubEvent.role || subEvent.role || event.role);
+    return [
+      'SUPERADMIN',
+      'EVENTADMIN',
+      'SUBEVENTADMIN',
+      'SUBEVENTMANAGER',
+      'SUBSUBEVENTMANAGER',
+    ].includes(ssRole);
+  };
+
     return (
         <motion.div
             layout
@@ -300,7 +320,7 @@ const EventAccordionCard = ({ event, user, onToggleStatus, onOpenRolesModal, onO
                     <h2 className="text-xl font-bold text-gray-800">{event.name}</h2>
                 </div>
                 <div className="flex items-center gap-2">
-                    <ActionButton onClick={() => onToggleStatus(event.id, 'main')} icon={Power} colorClass={event.isOpen ? 'green' : 'red'} title={event.isOpen ? 'Close Registrations' : 'Open Registrations'} />
+          <ActionButton onClick={() => onToggleStatus(event.id, 'main', canToggleMain)} icon={Power} colorClass={event.isOpen ? 'green' : 'red'} title={event.isOpen ? 'Close Registrations' : 'Open Registrations'} disabled={!canToggleMain} />
                     <ActionButton onClick={() => onOpenRolesModal(event, 'main')} icon={Users} colorClass="orange" title="Manage Roles" />
                     {user?.role === 'SUPERADMIN' && <ActionButton onClick={() => onOpenDeleteModal(event.id, 'main', event.name)} icon={Trash2} colorClass="red" title="Delete Event" />}
                     <div className="w-px h-6 bg-gray-200 mx-2"></div>
@@ -334,7 +354,18 @@ const EventAccordionCard = ({ event, user, onToggleStatus, onOpenRolesModal, onO
                                              <h3 className="font-semibold text-base text-gray-800">{subEvent.name}</h3>
                                         </div>
                                         <div className="flex items-center gap-1 flex-shrink-0">
-                                            <ActionButton onClick={() => onToggleStatus(subEvent.id, 'sub')} icon={Power} colorClass={subEvent.isOpen ? 'green' : 'red'} title="Toggle Status" disabled={!event.isOpen}/>
+                                    {(() => {
+                                      const canToggleSub = canToggleSubEvent(subEvent);
+                                      return (
+                                        <ActionButton
+                                          onClick={() => onToggleStatus(subEvent.id, 'sub', canToggleSub)}
+                                          icon={Power}
+                                          colorClass={subEvent.isOpen ? 'green' : 'red'}
+                                          title="Toggle Status"
+                                          disabled={!event.isOpen || !canToggleSub}
+                                        />
+                                      );
+                                    })()}
                                             <ActionButton onClick={() => onOpenRolesModal(subEvent, 'sub')} icon={Users} colorClass="orange" title="Manage Roles" />
                                             {user?.role === 'SUPERADMIN' && <ActionButton onClick={() => onOpenDeleteModal(subEvent.id, 'sub', subEvent.name)} icon={Trash2} colorClass="red" title="Delete" />}
                                         </div>
@@ -350,7 +381,18 @@ const EventAccordionCard = ({ event, user, onToggleStatus, onOpenRolesModal, onO
                                                 <p className="text-sm text-gray-600 flex items-center gap-2"><StatusPill isOpen={ssEvent.isOpen} /> {ssEvent.name}</p>
                                                 <div className="flex items-center flex-shrink-0">
                                                     <ActionButton onClick={() => onOpenJudgesModal(ssEvent)} icon={ClipboardList} colorClass="blue" title="Manage Judges" />
-                                                    <ActionButton onClick={() => onToggleStatus(ssEvent.id, 'subsub')} icon={Power} colorClass={ssEvent.isOpen ? 'green' : 'red'} title="Toggle Status" disabled={!subEvent.isOpen} />
+                                              {(() => {
+                                                const canToggleSubSub = canToggleSubSubEvent(subEvent, ssEvent);
+                                                return (
+                                                  <ActionButton
+                                                    onClick={() => onToggleStatus(ssEvent.id, 'subsub', canToggleSubSub)}
+                                                    icon={Power}
+                                                    colorClass={ssEvent.isOpen ? 'green' : 'red'}
+                                                    title="Toggle Status"
+                                                    disabled={!subEvent.isOpen || !canToggleSubSub}
+                                                  />
+                                                );
+                                              })()}
                                                     <ActionButton onClick={() => onOpenRolesModal(ssEvent, 'subsub')} icon={Users} colorClass="orange" title="Manage Roles" />
                                                     {user?.role === 'SUPERADMIN' && <ActionButton onClick={() => onOpenDeleteModal(ssEvent.id, 'subsub', ssEvent.name)} icon={Trash2} colorClass="red" title="Delete" />}
                                                 </div>
@@ -461,7 +503,8 @@ const AdminPage = () => {
     }
   };
 
-  const handleToggleStatus = async (eventId, level) => {
+  const handleToggleStatus = async (eventId, level, allowed = true) => {
+    if (!allowed) return;
     try {
       await api.post(`/events/toggle_status/${level}/${eventId}/`);
       fetchAdminData();

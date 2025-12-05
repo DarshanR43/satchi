@@ -4,6 +4,7 @@ from rest_framework import status
 from events.models import MainEvent, SubEvent, SubSubEvent
 from users.models import User
 from api.models import Project, TeamMember
+from api.serializers import ProjectSerializer
 from events.models import MainEvent,SubEvent,SubSubEvent
 from eval.models import Evaluation
 
@@ -83,24 +84,13 @@ def get_subsubevents(request, sub_event_id):
 @api_view(['GET'])
 def getProjectsByEvent(request, event_id):
     try:
-        event = SubSubEvent.objects.get(id=event_id)
-        projects = Project.objects.filter(event=event)
-        project_list = []
-        for project in projects:
-            project_list.append({
-                'project_id': project.id,
-                'team_name': project.team_name,
-                'project_topic': project.project_topic,
-                'captain_name': project.captain_name,
-                'captain_email': project.captain_email,
-                'captain_phone': project.captain_phone,
-                'team_members': project.team_members,
-                'faculty_mentor_name': project.faculty_mentor_name,
-                'submitted_at': project.submitted_at
-            })
-        return Response(project_list, status=status.HTTP_200_OK)
+        subsubevent = SubSubEvent.objects.get(id=event_id)
     except SubSubEvent.DoesNotExist:
         return Response({"error": "Event not found."}, status=status.HTTP_400_BAD_REQUEST)
+
+    projects = Project.objects.filter(event=subsubevent).order_by('id')
+    serializer = ProjectSerializer(projects, many=True)
+    return Response(serializer.data, status=status.HTTP_200_OK)
 
 from django.db import transaction, IntegrityError
 from django.shortcuts import get_object_or_404
@@ -186,6 +176,67 @@ from rest_framework import status
 from rest_framework.exceptions import ValidationError
 
 logger = logging.getLogger(__name__)
+
+
+@api_view(["GET"])
+@permission_classes([IsAuthenticatedOrReadOnly])
+def get_evaluation_submission(request):
+    """Return an existing evaluation (if any) including judge marks."""
+
+    project_id = request.query_params.get("project_id")
+    subsubevent_id = request.query_params.get("subsubevent_id")
+
+    if not project_id or not subsubevent_id:
+        return Response(
+            {"error": "project_id and subsubevent_id are required."},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    try:
+        project_id = int(project_id)
+        subsubevent_id = int(subsubevent_id)
+    except (TypeError, ValueError):
+        return Response(
+            {"error": "project_id and subsubevent_id must be integers."},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    try:
+        evaluation = (
+            Evaluation.objects.select_related("project", "subsubevent")
+            .prefetch_related("judge_marks")
+            .get(project_id=project_id, subsubevent_id=subsubevent_id)
+        )
+    except Evaluation.DoesNotExist:
+        return Response({"exists": False}, status=status.HTTP_200_OK)
+
+    marks_payload = [
+        {
+            "id": mark.id,
+            "judge_name": mark.judge_name,
+            "mark": str(mark.mark),
+            "comments": mark.comments or "",
+            "subsubevent_judge_id": mark.subsubevent_judge_id,
+        }
+        for mark in evaluation.judge_marks.order_by("judge_name")
+    ]
+
+    resp = {
+        "exists": True,
+        "evaluation": {
+            "id": evaluation.id,
+            "project_id": evaluation.project_id,
+            "subsubevent_id": evaluation.subsubevent_id,
+            "is_disqualified": evaluation.is_disqualified,
+            "remarks": evaluation.remarks or "",
+            "number_of_judges": evaluation.number_of_judges,
+            "total": str(evaluation.total) if evaluation.total is not None else None,
+            "final_score": str(evaluation.final_score) if evaluation.final_score is not None else None,
+            "marks": marks_payload,
+        },
+    }
+
+    return Response(resp, status=status.HTTP_200_OK)
 
 @api_view(["POST"])
 @permission_classes([IsAuthenticatedOrReadOnly])

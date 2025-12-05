@@ -128,7 +128,6 @@ def update_event_users(request):
     roles = data.get("roles", {})
     admins = {a["email"].strip().lower() for a in roles.get("admins", []) if a.get("email")}
     managers = {m["email"].strip().lower() for m in roles.get("managers", []) if m.get("email")}
-    print(admins, managers)
     # check conflicts
     conflicts = admins & managers
     if conflicts:
@@ -151,8 +150,14 @@ def update_event_users(request):
         mapping_filter = {"sub_sub_event": obj}
         admin_role, manager_role = None, User.Role.SUBSUBEVENTMANAGER
 
-    # delete all old mappings for this event scope
+    # delete all old mappings for this event scope except for superadmins
     EventUserMapping.objects.filter(**mapping_filter).exclude(user_role__in=[User.Role.SUPERADMIN]).delete()
+
+    # keep track of superadmins so we do not create duplicate mappings for them
+    existing_superadmins = set(
+        EventUserMapping.objects.filter(**mapping_filter, user_role=User.Role.SUPERADMIN)
+        .values_list("user_id", flat=True)
+    )
 
     # recreate
     created = 0
@@ -160,17 +165,31 @@ def update_event_users(request):
         for email in admins:
             try:
                 user = User.objects.get(email=email)
+                if user.id in existing_superadmins:
+                    continue
                 promote_user_if_higher(user, admin_role)
-                EventUserMapping.objects.create(user=user, user_role=admin_role, **mapping_filter)
-                created += 1
+                _, created_flag = EventUserMapping.objects.get_or_create(
+                    user=user,
+                    user_role=admin_role,
+                    **mapping_filter,
+                )
+                if created_flag:
+                    created += 1
             except User.DoesNotExist:
                 continue
     for email in managers:
         try:
             user = User.objects.get(email=email)
+            if user.id in existing_superadmins:
+                continue
             promote_user_if_higher(user, manager_role)
-            EventUserMapping.objects.create(user=user, user_role=manager_role, **mapping_filter)
-            created += 1
+            _, created_flag = EventUserMapping.objects.get_or_create(
+                user=user,
+                user_role=manager_role,
+                **mapping_filter,
+            )
+            if created_flag:
+                created += 1
         except User.DoesNotExist:
             continue
 
@@ -452,17 +471,36 @@ def get_event_users(request, level, event_id):
         obj = get_object_or_404(SubSubEvent, pk=event_id)
         mapping_filter = {"sub_sub_event": obj}
 
-    mappings = EventUserMapping.objects.filter(**mapping_filter)
-    data = {
-        "admins": [
-            {"email": m.user.email, "name": m.user.get_full_name() or m.user.email.split("@")[0]}
-            for m in mappings if "ADMIN" in m.user_role
-        ],
-        "managers": [
-            {"email": m.user.email, "name": m.user.get_full_name() or m.user.email.split("@")[0]}
-            for m in mappings if "MANAGER" in m.user_role
-        ],
-    }
+    mappings = (
+        EventUserMapping.objects.filter(**mapping_filter)
+        .select_related("user")
+        .order_by("user__email")
+    )
+
+    user_best_role = {}
+    for mapping in mappings:
+        role_priority = ROLE_PRIORITY.get(mapping.user_role, 99)
+        cached = user_best_role.get(mapping.user_id)
+        if cached is None or role_priority < cached["priority"]:
+            user_best_role[mapping.user_id] = {
+                "user": mapping.user,
+                "role": mapping.user_role,
+                "priority": role_priority,
+            }
+
+    admins = []
+    managers = []
+    for entry in user_best_role.values():
+        user = entry["user"]
+        display_name = user.get_full_name() or user.email.split("@")[0]
+        record = {"email": user.email, "name": display_name}
+        role = entry["role"] or ""
+        if "ADMIN" in role:
+            admins.append(record)
+        elif "MANAGER" in role:
+            managers.append(record)
+
+    data = {"admins": admins, "managers": managers}
     return Response(data, status=200)
 
 @api_view(["GET"])

@@ -203,7 +203,7 @@ const EvaluationPage = () => {
                     const judgesReq = axios.get(`${API_URL}/eval/subsubevents/${selectedSubSubEvent}/judges/`);
                     const [projectsRes, judgesRes] = await Promise.all([projectsReq, judgesReq]);
 
-                    setProjects(projectsRes.data);
+                    setProjects(Array.isArray(projectsRes.data) ? projectsRes.data : []);
                     const judgesList = judgesRes.data.judges || judgesRes.data || [];
                     setJudges(Array.isArray(judgesList) ? judgesList : []);
 
@@ -234,20 +234,56 @@ const EvaluationPage = () => {
         }
     };
 
-    const handleOpenEvaluation = (project) => {
-        setSelectedProject(project.id);
+    const handleOpenEvaluation = async (project) => {
+        const projectId = project.project_id ?? project.projectId ?? project.id;
+        if (!projectId) {
+            setStatus({ message: 'Unable to determine project id for evaluation.', type: 'error' });
+            return;
+        }
+
+        setSelectedProject(String(projectId));
         setSelectedProjectName(project.team_name);
         setScores({});
         setRemarks('');
         setIsDisqualified(false);
         setStatus({ message: '', type: '' });
         setIsModalOpen(true);
+
+        if (!selectedSubSubEvent) return;
+
+        try {
+            const response = await axios.get(`${API_URL}/eval/evaluations/detail/`, {
+                params: {
+                    project_id: projectId,
+                    subsubevent_id: selectedSubSubEvent,
+                },
+            });
+
+            const payload = response.data;
+            if (payload?.exists && payload.evaluation) {
+                const evaluation = payload.evaluation;
+                setIsDisqualified(Boolean(evaluation.is_disqualified));
+                setRemarks(evaluation.remarks || '');
+
+                const loadedScores = {};
+                (evaluation.marks || []).forEach((mark) => {
+                    loadedScores[mark.judge_name] = mark.mark;
+                });
+                setScores(loadedScores);
+            }
+        } catch (error) {
+            console.error('Failed to load existing evaluation', error);
+        }
     };
 
     const handleCloseModal = () => {
         setIsModalOpen(false);
         setSelectedProject('');
         setSelectedProjectName('');
+        setScores({});
+        setRemarks('');
+        setIsDisqualified(false);
+        setStatus({ message: '', type: '' });
     };
 
     const handleSubmit = async (e) => {
@@ -257,6 +293,12 @@ const EvaluationPage = () => {
             return;
         }
         
+        const projectId = parseInt(selectedProject, 10);
+        if (!Number.isInteger(projectId) || projectId <= 0) {
+            setStatus({ message: 'Error: Invalid project selected.', type: 'error' });
+            return;
+        }
+
         const marksPayload = judges.map(judge => ({
             judge_name: judge.name,
             mark: scores[judge.name] || "0",
@@ -270,9 +312,15 @@ const EvaluationPage = () => {
 
         setStatus({ message: 'Submitting...', type: 'info' });
 
+        const subSubEventId = parseInt(selectedSubSubEvent, 10);
+        if (!Number.isInteger(subSubEventId) || subSubEventId <= 0) {
+            setStatus({ message: 'Error: Invalid competition selected.', type: 'error' });
+            return;
+        }
+
         const submissionData = {
-            project_id: parseInt(selectedProject),
-            subsubevent_id: parseInt(selectedSubSubEvent),
+            project_id: projectId,
+            subsubevent_id: subSubEventId,
             is_disqualified: isDisqualified,
             remarks: remarks,
             marks: marksPayload
@@ -343,9 +391,11 @@ const EvaluationPage = () => {
                                             </tr>
                                         </thead>
                                         <tbody className="divide-y divide-gray-100">
-                                            {projects.map((project) => (
-                                                <tr key={project.id} className="hover:bg-orange-50/50 transition-colors group">
-                                                    <td className="p-4 text-gray-500 font-mono text-sm">#{project.id}</td>
+                                            {projects.map((project) => {
+                                                const projectId = project.project_id ?? project.id;
+                                                return (
+                                                    <tr key={projectId} className="hover:bg-orange-50/50 transition-colors group">
+                                                        <td className="p-4 text-gray-500 font-mono text-sm">#{projectId}</td>
                                                     <td className="p-4 font-semibold text-gray-800 group-hover:text-[#ff6a3c] transition-colors">
                                                         {project.team_name}
                                                     </td>
@@ -358,7 +408,8 @@ const EvaluationPage = () => {
                                                         </button>
                                                     </td>
                                                 </tr>
-                                            ))}
+                                                );
+                                            })}
                                         </tbody>
                                     </table>
                                 </div>
