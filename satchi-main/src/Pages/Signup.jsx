@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { User, Mail, Phone, Hash, School, Briefcase, Calendar, ChevronDown, UserCheck, CheckCircle, GraduationCap, BookOpenCheck, Lock, Eye, EyeOff, WandSparkles } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
@@ -142,10 +142,30 @@ const SignupPage = () => {
         return Array.from({ length: years }, (_, i) => `${i + 1}${i === 0 ? 'st' : i === 1 ? 'nd' : i === 2 ? 'rd' : 'th'} Year`);
     }, [formData.course, formData.school]);
 
+    // Auto-select Degree if only one option exists
+    useEffect(() => {
+        if (degreeOptions.length === 1 && formData.degree !== degreeOptions[0]) {
+            setFormData(prev => ({ ...prev, degree: degreeOptions[0] }));
+        }
+    }, [degreeOptions, formData.degree]);
+
+    // Auto-select Course if only one option exists
+    useEffect(() => {
+        if (courseOptions.length === 1 && formData.course !== courseOptions[0]) {
+            setFormData(prev => ({ ...prev, course: courseOptions[0] }));
+        }
+    }, [courseOptions, formData.course]);
+
     const handleInputChange = (e) => {
         const { name, value } = e.target;
         setFormData(prev => {
             const newState = { ...prev, [name]: value };
+            
+            // Auto-fill RollNo from Email for students
+            if (name === 'email' && userType === 'student') {
+                newState.rollNo = value.slice(0, 16).toUpperCase();
+            }
+
             if (name === 'school') {
                 newState.degree = '';
                 newState.course = '';
@@ -269,7 +289,7 @@ const SignupPage = () => {
             >
                 <div className="text-center">
                     <h1 className="text-4xl font-heading font-bold bg-gradient-to-r from-[#ff6a3c] via-[#df9400] to-[#ff6a3c] bg-clip-text text-transparent">Create an Account</h1>
-                    <p className="text-gray-600 mt-2">Join the Satchi Tech Fest ecosystem.</p>
+                    <p className="text-gray-600 mt-2">Join the GYAN Community.</p>
                 </div>
 
                 <div className="flex bg-gray-100 rounded-lg p-1 border border-gray-200/90">
@@ -287,7 +307,7 @@ const SignupPage = () => {
                     <AnimatePresence>
                         {isSuccess && (
                             <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="md:col-span-2 bg-green-100 border border-green-300 text-green-800 p-3 rounded-lg text-center flex items-center justify-center gap-2">
-                                <CheckCircle size={20} /><span>Signup successful! Redirecting to login...</span>
+                                <CheckCircle size={20} /><span>Signup Successful! Redirecting to login...</span>
                             </motion.div>
                         )}
                     </AnimatePresence>
