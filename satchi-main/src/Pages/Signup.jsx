@@ -142,14 +142,12 @@ const SignupPage = () => {
         return Array.from({ length: years }, (_, i) => `${i + 1}${i === 0 ? 'st' : i === 1 ? 'nd' : i === 2 ? 'rd' : 'th'} Year`);
     }, [formData.course, formData.school]);
 
-    // Auto-select Degree if only one option exists
     useEffect(() => {
         if (degreeOptions.length === 1 && formData.degree !== degreeOptions[0]) {
             setFormData(prev => ({ ...prev, degree: degreeOptions[0] }));
         }
     }, [degreeOptions, formData.degree]);
 
-    // Auto-select Course if only one option exists
     useEffect(() => {
         if (courseOptions.length === 1 && formData.course !== courseOptions[0]) {
             setFormData(prev => ({ ...prev, course: courseOptions[0] }));
@@ -161,7 +159,6 @@ const SignupPage = () => {
         setFormData(prev => {
             const newState = { ...prev, [name]: value };
             
-            // Auto-fill RollNo from Email for students
             if (name === 'email' && userType === 'student') {
                 newState.rollNo = value.slice(0, 16).toUpperCase();
             }
