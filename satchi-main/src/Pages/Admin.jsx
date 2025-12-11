@@ -324,7 +324,7 @@ const EventAccordionCard = ({ event, user, onToggleStatus, onOpenRolesModal, onO
                 </div>
                 <div className="flex items-center gap-2">
           <ActionButton onClick={() => onToggleStatus(event.id, 'main', canToggleMain)} icon={Power} colorClass={event.isOpen ? 'green' : 'red'} title={event.isOpen ? 'Close Registrations' : 'Open Registrations'} disabled={!canToggleMain} />
-                    <ActionButton onClick={() => onOpenRolesModal(event, 'main')} icon={Users} colorClass="orange" title="Manage Roles" />
+                    <ActionButton onClick={() => onOpenRolesModal(event, 'main')} icon={Users} colorClass="orange" title="Manage Roles" disabled={!canToggleMain} />
                     {user?.role === 'SUPERADMIN' && <ActionButton onClick={() => onOpenDeleteModal(event.id, 'main', event.name)} icon={Trash2} colorClass="red" title="Delete Event" />}
                     <div className="w-px h-6 bg-gray-200 mx-2"></div>
                     <ChevronDown className={`transition-transform duration-300 ${isExpanded ? 'rotate-180' : ''} text-gray-500`} />
@@ -369,7 +369,7 @@ const EventAccordionCard = ({ event, user, onToggleStatus, onOpenRolesModal, onO
                                         />
                                       );
                                     })()}
-                                            <ActionButton onClick={() => onOpenRolesModal(subEvent, 'sub')} icon={Users} colorClass="orange" title="Manage Roles" />
+                                            <ActionButton onClick={() => onOpenRolesModal(subEvent, 'sub')} icon={Users} colorClass="orange" title="Manage Roles" disabled={!canToggleSubEvent(subEvent)} />
                                             {user?.role === 'SUPERADMIN' && <ActionButton onClick={() => onOpenDeleteModal(subEvent.id, 'sub', subEvent.name)} icon={Trash2} colorClass="red" title="Delete" />}
                                         </div>
                                     </div>
@@ -396,7 +396,7 @@ const EventAccordionCard = ({ event, user, onToggleStatus, onOpenRolesModal, onO
                                                   />
                                                 );
                                               })()}
-                                                    <ActionButton onClick={() => onOpenRolesModal(ssEvent, 'subsub')} icon={Users} colorClass="orange" title="Manage Roles" />
+                                                    <ActionButton onClick={() => onOpenRolesModal(ssEvent, 'subsub')} icon={Users} colorClass="orange" title="Manage Roles" disabled={!canToggleSubSubEvent(subEvent, ssEvent)} />
                                                     {user?.role === 'SUPERADMIN' && <ActionButton onClick={() => onOpenDeleteModal(ssEvent.id, 'subsub', ssEvent.name)} icon={Trash2} colorClass="red" title="Delete" />}
                                                 </div>
                                             </div>
