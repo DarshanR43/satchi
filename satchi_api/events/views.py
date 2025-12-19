@@ -4,12 +4,13 @@ from django.db import transaction
 from django.db.models import Prefetch
 from django.shortcuts import get_object_or_404
 from rest_framework import status
+from rest_framework.permissions import IsAuthenticated, IsAuthenticatedOrReadOnly
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
 from .models import MainEvent, SubEvent, SubSubEvent
-from users.models import EventUserMapping, User  # adjust app label if different
+from users.models import EventUserMapping, User
 from users.services.roles import promote_user_if_higher
 
 @api_view(["POST"])
@@ -197,6 +198,7 @@ def update_event_users(request):
 
 
 @api_view(['GET'])
+@permission_classes([IsAuthenticatedOrReadOnly])
 def get_events(request):
     mainEvents = MainEvent.objects.all()
     respData = []
@@ -220,7 +222,7 @@ def get_events(request):
                     "maxTeamSize": ssEvent.maxTeamSize,
                     "minFemaleParticipants": ssEvent.minFemaleParticipants,
                     "isFacultyMentorRequired": ssEvent.isFacultyMentorRequired,
-                    "isOpen": getattr(ssEvent, "isOpen", True),  # fallback since not in model yet
+                    "isOpen": getattr(ssEvent, "isOpen", True), 
                 })
 
             subEventsData.append({
