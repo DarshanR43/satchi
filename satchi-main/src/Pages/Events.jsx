@@ -5,9 +5,9 @@ import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
 import { Loader } from 'lucide-react';
 
-import EventSidebar from '../components/events/EventCards';
-import EventContent from '../components/events/StatusPill'; // Imported as StatusPill in your original code
-import SubSubEventModal from '../components/events/SubSubEventModal';
+import EventSidebar from '../Components/events/EventCards';
+import EventContent from '../Components/events/StatusPill'; // Imported as StatusPill in your original code
+import SubSubEventModal from '../Components/events/SubSubEventModal';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000';
 
