@@ -5,7 +5,8 @@ import axios from 'axios';
 const AuthContext = createContext();
 
 // API base URL
-const API_URL = 'http://127.0.0.1:8000';
+const API_URL = import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000';
+
 
 // Create a provider component
 export const AuthProvider = ({ children }) => {
