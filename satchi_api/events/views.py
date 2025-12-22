@@ -98,14 +98,68 @@ def delete_event(request, level: str, pk: int):
     """
     lvl = (level or "").lower()
     if lvl == "main":
-        get_object_or_404(MainEvent, pk=pk).delete()
+        main_event = get_object_or_404(MainEvent, pk=pk)
+        sub_count = main_event.subevents.count()
+        subsub_count = SubSubEvent.objects.filter(parent_event=main_event).count()
+        if sub_count or subsub_count:
+            message = "Delete child events first."
+            return Response(
+                {
+                    "error": "Main event has child events.",
+                    "subEvents": sub_count,
+                    "subSubEvents": subsub_count,
+                    "message": message,
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        main_event.delete()
     elif lvl == "sub":
-        get_object_or_404(SubEvent, pk=pk).delete()
+        sub_event = get_object_or_404(SubEvent, pk=pk)
+        subsub_count = sub_event.subsubevents.count()
+        if subsub_count:
+            return Response(
+                {
+                    "error": "Sub-event has child events.",
+                    "subSubEvents": subsub_count,
+                    "message": "Delete child events first.",
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        sub_event.delete()
     elif lvl in ("subsub", "sub_sub"):
         get_object_or_404(SubSubEvent, pk=pk).delete()
     else:
         return Response({"error": "Invalid level. Use main | sub | subsub."}, status=400)
     return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+@api_view(["PATCH"])
+@transaction.atomic
+def update_event(request, level: str, pk: int):
+    """Update event details such as the name for the given level."""
+
+    lvl = (level or "").lower()
+    name = (request.data.get("name") or "").strip()
+
+    if not name:
+        return Response({"error": "Name is required."}, status=status.HTTP_400_BAD_REQUEST)
+
+    if lvl == "main":
+        obj = get_object_or_404(MainEvent, pk=pk)
+    elif lvl == "sub":
+        obj = get_object_or_404(SubEvent, pk=pk)
+    elif lvl in ("subsub", "sub_sub"):
+        obj = get_object_or_404(SubSubEvent, pk=pk)
+    else:
+        return Response({"error": "Invalid level. Use main | sub | subsub."}, status=status.HTTP_400_BAD_REQUEST)
+
+    if obj.name == name:
+        return Response({"status": "no-op", "id": obj.id, "name": obj.name}, status=status.HTTP_200_OK)
+
+    obj.name = name
+    obj.save(update_fields=["name"])
+
+    return Response({"status": "success", "id": obj.id, "name": obj.name}, status=status.HTTP_200_OK)
 
 
 @api_view(["POST"])
@@ -536,14 +590,17 @@ def openStateEvent(request,level,eventid):
     else:
         obj = get_object_or_404(SubSubEvent, pk=eventid)
 
-    if obj.isOpen == True:
-        obj.isOpen = False
-        obj.save()
-    else:
-        obj.isOpen = True
-        obj.save()
+    new_state = not bool(obj.isOpen)
+    obj.isOpen = new_state
+    obj.save()
 
-    return Response({"status": "success"}, status=200)
+    if level == "main" and new_state is False:
+        SubEvent.objects.filter(parent_event=obj, isOpen=True).update(isOpen=False)
+        SubSubEvent.objects.filter(parent_event=obj, isOpen=True).update(isOpen=False)
+    elif level == "sub" and new_state is False:
+        SubSubEvent.objects.filter(parent_subevent=obj, isOpen=True).update(isOpen=False)
+
+    return Response({"status": "success", "isOpen": new_state}, status=200)
 
 
 

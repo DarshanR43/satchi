@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Plus, ChevronDown, Trash2, X, Users, Power, CheckSquare, Square, AlertTriangle, ClipboardList } from 'lucide-react';
+import { Plus, ChevronDown, Trash2, X, Users, Power, CheckSquare, Square, AlertTriangle, ClipboardList, Edit3, Download } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { Navigate } from 'react-router-dom';
 import axios from 'axios';
@@ -29,7 +29,7 @@ const StatusPill = ({ isOpen }) => (
     </span>
 );
 
-const ConfirmationModal = ({ isOpen, onClose, onConfirm, title, message }) => {
+const ConfirmationModal = ({ isOpen, onClose, onConfirm, title, message, errorMessage, confirmLabel = 'Confirm Delete', downloadAction = null }) => {
   if (!isOpen) return null;
   return (
     <motion.div 
@@ -48,10 +48,27 @@ const ConfirmationModal = ({ isOpen, onClose, onConfirm, title, message }) => {
             </div>
             <h3 className="text-xl font-bold text-gray-800 mb-2">{title}</h3>
             <p className="text-gray-500">{message}</p>
+          {errorMessage && (
+            <div className="mt-4 p-3 rounded-lg bg-red-100 border border-red-300 text-red-700 text-sm text-left space-y-1">
+              {errorMessage.split('\n').map((line, index) => (
+                <p key={`delete-error-${index}`}>{line}</p>
+              ))}
+            </div>
+          )}
         </div>
-        <div className="p-4 bg-gray-50 flex justify-center gap-4 border-t border-gray-200">
+        <div className="p-4 bg-gray-50 flex justify-center gap-4 border-t border-gray-200 flex-wrap">
+            {downloadAction && (
+              <button
+                type="button"
+                onClick={(e) => { e.preventDefault(); downloadAction.onClick?.(); }}
+                disabled={downloadAction.disabled}
+                className="px-6 py-2 rounded-lg bg-blue-100 text-blue-700 font-semibold hover:bg-blue-200 transition disabled:opacity-60 disabled:cursor-not-allowed"
+              >
+                {downloadAction.label || 'Download'}
+              </button>
+            )}
             <button onClick={onClose} className="px-6 py-2 rounded-lg bg-gray-200 text-gray-700 font-semibold hover:bg-gray-300 transition">Cancel</button>
-            <button onClick={onConfirm} className="px-6 py-2 rounded-lg bg-red-600 text-white font-bold hover:bg-red-700 transition">Confirm Delete</button>
+            <button onClick={onConfirm} className="px-6 py-2 rounded-lg bg-red-600 text-white font-bold hover:bg-red-700 transition">{confirmLabel}</button>
         </div>
       </motion.div>
     </motion.div>
@@ -142,6 +159,55 @@ const AddEventModal = ({ isOpen, onClose, onSave, allEvents, creationContext = {
             )}
           </div>
           <div className="p-4 bg-gray-50 border-t border-gray-200 flex justify-end"><button type="submit" className="px-6 py-2 rounded-lg bg-[#ff6a3c] text-white font-bold hover:shadow-lg hover:shadow-orange-500/50 transition">Save Event</button></div>
+        </form>
+      </motion.div>
+    </motion.div>
+  );
+};
+
+const EditEventModal = ({ isOpen, onClose, onSave, initialName, entityLabel = 'Event', parentName }) => {
+  const [name, setName] = useState(initialName || '');
+
+  useEffect(() => {
+    if (isOpen) {
+      setName(initialName || '');
+    }
+  }, [isOpen, initialName]);
+
+  if (!isOpen) return null;
+
+  const trimmedName = name.trim();
+  const isDisabled = trimmedName.length === 0 || trimmedName === (initialName || '').trim();
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    if (isDisabled) {
+      return;
+    }
+    onSave(trimmedName);
+  };
+
+  return (
+    <motion.div className="fixed inset-0 bg-gray-900/60 backdrop-blur-sm flex items-center justify-center z-50 p-4" onClick={onClose}>
+      <motion.div initial={{ scale: 0.9, y: 50 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.9, y: -50 }} className="bg-white rounded-2xl w-full max-w-md mx-auto shadow-xl" onClick={(e) => e.stopPropagation()}>
+        <form onSubmit={handleSubmit}>
+          <div className="flex items-center justify-between p-5 border-b border-gray-200">
+            <h2 className="text-2xl font-bold text-gray-800">Edit {entityLabel}</h2>
+            <button type="button" onClick={onClose} className="p-2 rounded-full hover:bg-gray-100"><X size={24} className="text-gray-500" /></button>
+          </div>
+          <div className="p-6 space-y-4">
+            {parentName && (
+              <p className="text-sm text-gray-500">Parent: <span className="font-semibold text-gray-700">{parentName}</span></p>
+            )}
+            <div className="form-group">
+              <label>Event Name</label>
+              <input className="text-black" type="text" value={name} onChange={(e) => setName(e.target.value)} autoFocus />
+            </div>
+          </div>
+          <div className="p-4 bg-gray-50 border-t border-gray-200 flex justify-end gap-3">
+            <button type="button" onClick={onClose} className="px-5 py-2 rounded-lg bg-gray-200 text-gray-700 font-semibold hover:bg-gray-300 transition">Cancel</button>
+            <button type="submit" disabled={isDisabled} className="px-5 py-2 rounded-lg bg-[#ff6a3c] text-white font-bold hover:shadow-lg hover:shadow-orange-500/50 transition disabled:opacity-50 disabled:cursor-not-allowed">Save Changes</button>
+          </div>
         </form>
       </motion.div>
     </motion.div>
@@ -291,7 +357,7 @@ const ManageJudgesModal = ({ isOpen, onClose, onSave, event, api }) => {
     );
 };
 
-const EventAccordionCard = ({ event, user, onToggleStatus, onOpenRolesModal, onOpenDeleteModal, onOpenCreateModal, onOpenJudgesModal, isExpanded, onExpand }) => {
+const EventAccordionCard = ({ event, user, onToggleStatus, onOpenRolesModal, onOpenEditModal, onOpenDeleteModal, onOpenCreateModal, onOpenJudgesModal, onDownloadRegistrations, downloadingId, isExpanded, onExpand }) => {
   const normalizeRole = (role) => (role || '').toUpperCase();
   const mainRole = normalizeRole(event.role);
   const canToggleMain = ['SUPERADMIN', 'EVENTADMIN'].includes(mainRole);
@@ -323,9 +389,14 @@ const EventAccordionCard = ({ event, user, onToggleStatus, onOpenRolesModal, onO
                     <h2 className="text-xl font-bold text-gray-800">{event.name}</h2>
                 </div>
                 <div className="flex items-center gap-2">
-          <ActionButton onClick={() => onToggleStatus(event.id, 'main', canToggleMain)} icon={Power} colorClass={event.isOpen ? 'green' : 'red'} title={event.isOpen ? 'Close Registrations' : 'Open Registrations'} disabled={!canToggleMain} />
+            <ActionButton onClick={() => onToggleStatus(event.id, 'main', canToggleMain)} icon={Power} colorClass={event.isOpen ? 'green' : 'red'} title={event.isOpen ? 'Close Registrations' : 'Open Registrations'} disabled={!canToggleMain} />
                     <ActionButton onClick={() => onOpenRolesModal(event, 'main')} icon={Users} colorClass="orange" title="Manage Roles" disabled={!canToggleMain} />
-                    {user?.role === 'SUPERADMIN' && <ActionButton onClick={() => onOpenDeleteModal(event.id, 'main', event.name)} icon={Trash2} colorClass="red" title="Delete Event" />}
+                    {user?.role === 'SUPERADMIN' && (
+                      <>
+                        <ActionButton onClick={() => onOpenEditModal({ id: event.id, name: event.name }, 'main')} icon={Edit3} colorClass="blue" title="Edit Event" />
+                        <ActionButton onClick={() => onOpenDeleteModal(event.id, 'main', event.name)} icon={Trash2} colorClass="red" title="Delete Event" />
+                      </>
+                    )}
                     <div className="w-px h-6 bg-gray-200 mx-2"></div>
                     <ChevronDown className={`transition-transform duration-300 ${isExpanded ? 'rotate-180' : ''} text-gray-500`} />
                 </div>
@@ -369,8 +440,13 @@ const EventAccordionCard = ({ event, user, onToggleStatus, onOpenRolesModal, onO
                                         />
                                       );
                                     })()}
-                                            <ActionButton onClick={() => onOpenRolesModal(subEvent, 'sub')} icon={Users} colorClass="orange" title="Manage Roles" disabled={!canToggleSubEvent(subEvent)} />
-                                            {user?.role === 'SUPERADMIN' && <ActionButton onClick={() => onOpenDeleteModal(subEvent.id, 'sub', subEvent.name)} icon={Trash2} colorClass="red" title="Delete" />}
+                                             <ActionButton onClick={() => onOpenRolesModal(subEvent, 'sub')} icon={Users} colorClass="orange" title="Manage Roles" disabled={!canToggleSubEvent(subEvent)} />
+                                             {user?.role === 'SUPERADMIN' && (
+                                               <>
+                                                 <ActionButton onClick={() => onOpenEditModal({ id: subEvent.id, name: subEvent.name, parentName: event.name }, 'sub')} icon={Edit3} colorClass="blue" title="Edit" />
+                                                 <ActionButton onClick={() => onOpenDeleteModal(subEvent.id, 'sub', subEvent.name)} icon={Trash2} colorClass="red" title="Delete" />
+                                               </>
+                                             )}
                                         </div>
                                     </div>
                                     <div className="pl-4 mt-2 space-y-2">
@@ -379,28 +455,41 @@ const EventAccordionCard = ({ event, user, onToggleStatus, onOpenRolesModal, onO
                                                 <Plus size={12} /> Add Competition/Workshop
                                             </button>
                                         )}
-                                        {subEvent.subSubEvents.map(ssEvent => (
-                                            <div key={ssEvent.id} className="flex justify-between items-center pt-2 border-t border-dashed border-gray-200">
-                                                <p className="text-sm text-gray-600 flex items-center gap-2"><StatusPill isOpen={ssEvent.isOpen} /> {ssEvent.name}</p>
-                                                <div className="flex items-center flex-shrink-0">
-                                                    <ActionButton onClick={() => onOpenJudgesModal(ssEvent)} icon={ClipboardList} colorClass="blue" title="Manage Judges" />
-                                              {(() => {
-                                                const canToggleSubSub = canToggleSubSubEvent(subEvent, ssEvent);
-                                                return (
-                                                  <ActionButton
-                                                    onClick={() => onToggleStatus(ssEvent.id, 'subsub', canToggleSubSub)}
-                                                    icon={Power}
-                                                    colorClass={ssEvent.isOpen ? 'green' : 'red'}
-                                                    title="Toggle Status"
-                                                    disabled={!subEvent.isOpen || !canToggleSubSub}
-                                                  />
-                                                );
-                                              })()}
-                                                    <ActionButton onClick={() => onOpenRolesModal(ssEvent, 'subsub')} icon={Users} colorClass="orange" title="Manage Roles" disabled={!canToggleSubSubEvent(subEvent, ssEvent)} />
-                                                    {user?.role === 'SUPERADMIN' && <ActionButton onClick={() => onOpenDeleteModal(ssEvent.id, 'subsub', ssEvent.name)} icon={Trash2} colorClass="red" title="Delete" />}
+                                        {subEvent.subSubEvents.map((ssEvent) => {
+                                            const canToggleSubSub = canToggleSubSubEvent(subEvent, ssEvent);
+                                            const isDownloading = downloadingId === ssEvent.id;
+                                            return (
+                                                <div key={ssEvent.id} className="flex justify-between items-center pt-2 border-t border-dashed border-gray-200">
+                                                    <p className="text-sm text-gray-600 flex items-center gap-2"><StatusPill isOpen={ssEvent.isOpen} /> {ssEvent.name}</p>
+                                                    <div className="flex items-center flex-shrink-0">
+                                                        {onDownloadRegistrations && (
+                                                            <ActionButton
+                                                                onClick={() => onDownloadRegistrations(ssEvent)}
+                                                                icon={Download}
+                                                                colorClass="blue"
+                                                                title={isDownloading ? 'Preparing download...' : 'Download Registrations'}
+                                                                disabled={isDownloading}
+                                                            />
+                                                        )}
+                                                        <ActionButton onClick={() => onOpenJudgesModal(ssEvent)} icon={ClipboardList} colorClass="blue" title="Manage Judges" />
+                                                        <ActionButton
+                                                            onClick={() => onToggleStatus(ssEvent.id, 'subsub', canToggleSubSub)}
+                                                            icon={Power}
+                                                            colorClass={ssEvent.isOpen ? 'green' : 'red'}
+                                                            title="Toggle Status"
+                                                            disabled={!subEvent.isOpen || !canToggleSubSub}
+                                                        />
+                                                        <ActionButton onClick={() => onOpenRolesModal(ssEvent, 'subsub')} icon={Users} colorClass="orange" title="Manage Roles" disabled={!canToggleSubSub} />
+                                                        {user?.role === 'SUPERADMIN' && (
+                                                          <>
+                                                            <ActionButton onClick={() => onOpenEditModal({ id: ssEvent.id, name: ssEvent.name, parentName: subEvent.name }, 'subsub')} icon={Edit3} colorClass="blue" title="Edit" />
+                                                            <ActionButton onClick={() => onOpenDeleteModal(ssEvent.id, 'subsub', ssEvent.name, { entity: ssEvent })} icon={Trash2} colorClass="red" title="Delete" />
+                                                          </>
+                                                        )}
+                                                    </div>
                                                 </div>
-                                            </div>
-                                        ))}
+                                            );
+                                        })}
                                     </div>
                                 </div>
                             ))}
@@ -420,9 +509,12 @@ const AdminPage = () => {
   const [expandedEventId, setExpandedEventId] = useState(null);
   const [isAddEventModalOpen, setIsAddEventModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isRolesModalOpen, setIsRolesModalOpen] = useState(false);
   const [isJudgesModalOpen, setIsJudgesModalOpen] = useState(false);
   const [modalContext, setModalContext] = useState(null);
+  const [deleteError, setDeleteError] = useState(null);
+  const [downloadingId, setDownloadingId] = useState(null);
 
   const api = useMemo(() => {
     const instance = axios.create({ baseURL: API_URL });
@@ -476,12 +568,103 @@ const AdminPage = () => {
     } catch (error) { console.error("Create event error:", error); alert('Error: Could not create event.'); }
   };
 
+  const closeDeleteModal = () => {
+    setIsDeleteModalOpen(false);
+    setDeleteError(null);
+    setModalContext(null);
+  };
+
+  const openDeleteModal = (id, level, name, extra = {}) => {
+    const message = level === 'subsub'
+      ? `Deleting "${name}" will remove all registrations and evaluations. Download the details before continuing.`
+      : `Are you sure you want to delete "${name}"?`;
+    setModalContext({ id, level, name, message, ...extra });
+    setDeleteError(null);
+    setIsDeleteModalOpen(true);
+  };
+
+  const openEditModal = (context, level) => {
+    setModalContext({ ...context, level });
+    setIsEditModalOpen(true);
+  };
+
+  const closeEditModal = () => {
+    setIsEditModalOpen(false);
+    setModalContext(null);
+  };
+
   const handleDeleteEvent = async () => {
     if (!modalContext) return;
     try {
       await api.delete(`/events/delete_event/${modalContext.level}/${modalContext.id}/`);
-      setIsDeleteModalOpen(false); setModalContext(null); fetchAdminData();
-    } catch (error) { console.error("Delete event error:", error); alert('Error: Could not delete event.'); }
+      closeDeleteModal();
+      fetchAdminData();
+    } catch (error) {
+      console.error("Delete event error:", error);
+      const data = error.response?.data;
+      const subCount = data?.subEvents || 0;
+      const subSubCount = data?.subSubEvents || 0;
+      const parts = [];
+      if (subCount || subSubCount) {
+        parts.push('Delete the child events before removing this event.');
+        if (subCount) {
+          parts.push(`${subCount} sub-event${subCount === 1 ? '' : 's'} remaining.`);
+        }
+        if (subSubCount) {
+          parts.push(`${subSubCount} sub-sub-event${subSubCount === 1 ? '' : 's'} remaining.`);
+        }
+      }
+      const fallback = parts.join('\n');
+      const message = data?.message && fallback
+        ? `${data.message}\n${fallback}`
+        : data?.message || fallback || 'Error: Could not delete event.';
+      setDeleteError(message);
+    }
+  };
+
+  const handleDownloadRegistrations = async (target) => {
+    if (!target?.id) {
+      return;
+    }
+    try {
+      setDownloadingId(target.id);
+      const response = await api.get(`/eval/subsubevents/${target.id}/summary.csv`, {
+        responseType: 'blob',
+      });
+      const blob = new Blob([response.data], { type: 'text/csv' });
+      const url = window.URL.createObjectURL(blob);
+      const rawName = (target.name || `subsubevent-${target.id}`).toString();
+      const safeName = rawName
+        .trim()
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/^-+|-+$/g, '') || `subsubevent-${target.id}`;
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `${safeName}-registrations.csv`);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error('Download registrations error:', error);
+      alert('Error: Could not download registrations.');
+    } finally {
+      setDownloadingId(null);
+    }
+  };
+
+  const handleUpdateEventName = async (newName) => {
+    if (!modalContext) return;
+    const { level, id } = modalContext;
+    try {
+      await api.patch(`/events/update_event/${level}/${id}/`, { name: newName });
+      closeEditModal();
+      fetchAdminData();
+    } catch (error) {
+      console.error("Update event error:", error);
+      alert(error.response?.data?.error || 'Error: Could not update event.');
+    }
   };
 
   const handleSaveRoles = async (eventId, level, newRoles) => {
@@ -514,11 +697,18 @@ const AdminPage = () => {
     } catch (error) { console.error("Toggle status error:", error); alert('Error: Could not update the event status.'); }
   };
   
-  const openDeleteModal = (id, level, name) => { setModalContext({ id, level, name }); setIsDeleteModalOpen(true); };
   const openRolesModal = (event, level) => { setModalContext({ ...event, level }); setIsRolesModalOpen(true); };
   const openCreateModal = (context = {}) => { setModalContext(context); setIsAddEventModalOpen(true); };
   const openJudgesModal = (event) => { setModalContext(event); setIsJudgesModalOpen(true); };
   const toggleExpand = (eventId) => setExpandedEventId(prevId => (prevId === eventId ? null : eventId));
+
+  const levelLabels = {
+    main: 'Main Event',
+    sub: 'Sub-Event',
+    subsub: 'Sub-Sub Event',
+    sub_sub: 'Sub-Sub Event',
+  };
+  const editEntityLabel = modalContext ? levelLabels[modalContext.level] || 'Event' : 'Event';
 
   if (loading) return <div className="flex justify-center items-center min-h-screen text-gray-500">Loading Dashboard...</div>;
   if (error) return <div className="flex justify-center items-center min-h-screen text-red-500">{error}</div>;
@@ -527,7 +717,21 @@ const AdminPage = () => {
   return (
     <>
       <AddEventModal isOpen={isAddEventModalOpen} onClose={() => setIsAddEventModalOpen(false)} onSave={handleCreateEvent} allEvents={events} creationContext={modalContext} />
-      <ConfirmationModal isOpen={isDeleteModalOpen} onClose={() => setIsDeleteModalOpen(false)} onConfirm={handleDeleteEvent} title="Confirm Deletion" message={`Are you sure you want to delete "${modalContext?.name}"?`} />
+      <EditEventModal isOpen={isEditModalOpen} onClose={closeEditModal} onSave={handleUpdateEventName} initialName={modalContext?.name || ''} entityLabel={editEntityLabel} parentName={modalContext?.parentName} />
+      <ConfirmationModal
+        isOpen={isDeleteModalOpen}
+        onClose={closeDeleteModal}
+        onConfirm={handleDeleteEvent}
+        title="Confirm Deletion"
+        message={modalContext?.message || `Are you sure you want to delete "${modalContext?.name}"?`}
+        errorMessage={deleteError}
+        confirmLabel={modalContext?.level === 'subsub' ? 'Delete' : 'Confirm Delete'}
+        downloadAction={modalContext?.level === 'subsub' ? {
+          label: downloadingId === modalContext?.id ? 'Preparing...' : 'Download Details',
+          onClick: () => handleDownloadRegistrations(modalContext?.entity || modalContext),
+          disabled: downloadingId === modalContext?.id,
+        } : null}
+      />
       <ManageRolesModal isOpen={isRolesModalOpen} onClose={() => setIsRolesModalOpen(false)} onSave={handleSaveRoles} event={modalContext} eventLevel={modalContext?.level} api={api} />
       <ManageJudgesModal isOpen={isJudgesModalOpen} onClose={() => setIsJudgesModalOpen(false)} onSave={handleSaveJudges} event={modalContext} api={api} />
 
@@ -544,8 +748,8 @@ const AdminPage = () => {
             {user?.role === 'SUPERADMIN' && (<button onClick={() => openCreateModal()} className="flex items-center gap-2 px-5 py-2 rounded-lg bg-[#ff6a3c] text-white font-bold hover:shadow-lg hover:shadow-orange-500/50 transition-shadow"><Plus size={18} /> Create Event</button>)}
           </div>
           <div className="space-y-4">
-              {events.map((event) => (
-                  <EventAccordionCard key={event.id} event={event} user={user} onToggleStatus={handleToggleStatus} onOpenRolesModal={openRolesModal} onOpenDeleteModal={openDeleteModal} onOpenCreateModal={openCreateModal} onOpenJudgesModal={openJudgesModal} isExpanded={expandedEventId === event.id} onExpand={() => toggleExpand(event.id)} />
+                {events.map((event) => (
+                  <EventAccordionCard key={event.id} event={event} user={user} onToggleStatus={handleToggleStatus} onOpenRolesModal={openRolesModal} onOpenEditModal={openEditModal} onOpenDeleteModal={openDeleteModal} onOpenCreateModal={openCreateModal} onOpenJudgesModal={openJudgesModal} onDownloadRegistrations={handleDownloadRegistrations} downloadingId={downloadingId} isExpanded={expandedEventId === event.id} onExpand={() => toggleExpand(event.id)} />
               ))}
           </div>
         </div>

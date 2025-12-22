@@ -1,9 +1,11 @@
-from rest_framework.decorators import api_view
+from django.db.models import Q
+from rest_framework.decorators import api_view, permission_classes
 from rest_framework.response import Response
 from rest_framework import status
-from events.models import MainEvent, SubEvent, SubSubEvent
+from events.models import SubSubEvent
 from users.models import User
 from .models import Project, TeamMember
+from rest_framework.permissions import IsAuthenticated
 
 @api_view(['POST'])
 def submit_project(request, event_id):
@@ -98,3 +100,58 @@ def submit_project(request, event_id):
 
     except Exception as e:
         return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def user_registrations(request):
+    email = (request.user.email or '').strip().lower()
+    if not email:
+        return Response({"registrations": []}, status=status.HTTP_200_OK)
+
+    projects = (
+        Project.objects.filter(
+            Q(captain_email__iexact=email) | Q(members__email__iexact=email)
+        )
+        .select_related(
+            'event',
+            'event__parent_subevent',
+            'event__parent_event',
+        )
+        .distinct()
+    )
+
+    payload = []
+    for project in projects:
+        subsub_event = project.event
+        if not subsub_event:
+            continue
+
+        sub_event = getattr(subsub_event, 'parent_subevent', None)
+        main_event = getattr(subsub_event, 'parent_event', None)
+
+        role = 'Captain' if project.captain_email.strip().lower() == email else 'Team Member'
+
+        payload.append({
+            'projectId': project.id,
+            'teamName': project.team_name,
+            'projectTopic': project.project_topic,
+            'role': role,
+            'registeredAt': project.submitted_at.isoformat() if project.submitted_at else None,
+            'event': {
+                'id': subsub_event.id,
+                'eventId': subsub_event.event_id,
+                'name': subsub_event.name,
+                'description': subsub_event.description,
+            },
+            'subEvent': {
+                'id': sub_event.id if sub_event else None,
+                'name': sub_event.name if sub_event else None,
+            },
+            'mainEvent': {
+                'id': main_event.id if main_event else None,
+                'name': main_event.name if main_event else None,
+            },
+        })
+
+    return Response({"registrations": payload}, status=status.HTTP_200_OK)

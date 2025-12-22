@@ -4,7 +4,7 @@ from rest_framework import status
 
 from events.models import MainEvent, SubEvent, SubSubEvent
 from users.models import User
-from api.models import Project, TeamMember
+from api.models import Project
 from api.serializers import ProjectSerializer
 from eval.models import Evaluation
 
@@ -16,6 +16,7 @@ from rest_framework.permissions import IsAuthenticatedOrReadOnly
 from decimal import Decimal
 import csv
 from io import StringIO
+from django.utils.text import slugify
 
 from .models import SubSubEventJudge, Evaluation, EvaluationJudgeMark
 from .serializers import (
@@ -234,22 +235,34 @@ def get_evaluation_submission(request):
 @api_view(["GET"])
 @permission_classes([IsAuthenticatedOrReadOnly])
 def download_evaluation_summary(request, subsubevent_id):
-    """Generate CSV summary of evaluations for a given sub-sub event."""
+    """Generate CSV containing registrations (and evaluation scores if available)."""
 
     subsubevent = get_object_or_404(SubSubEvent, id=subsubevent_id)
+
+    projects = (
+        Project.objects.filter(event=subsubevent)
+        .prefetch_related("members")
+        .order_by("team_name", "id")
+    )
 
     evaluations = (
         Evaluation.objects.filter(subsubevent=subsubevent)
         .select_related("project")
         .prefetch_related("judge_marks")
-        .order_by("project__team_name")
     )
+    evaluation_map = {evaluation.project_id: evaluation for evaluation in evaluations}
 
     judges = list(
         SubSubEventJudge.objects.filter(subsubevent=subsubevent)
         .order_by("order", "name")
         .values_list("name", flat=True)
     )
+    seen_judges = set(judges)
+    for evaluation in evaluations:
+        for mark in evaluation.judge_marks.all():
+            if mark.judge_name not in seen_judges:
+                judges.append(mark.judge_name)
+                seen_judges.add(mark.judge_name)
 
     csv_buffer = StringIO()
     writer = csv.writer(csv_buffer)
@@ -259,36 +272,74 @@ def download_evaluation_summary(request, subsubevent_id):
         "Project ID",
         "Team Name",
         "Project Topic",
+        "Captain Name",
+        "Captain Email",
+        "Captain Phone",
+        "Team Members",
+        "Registered At",
+        "Evaluated",
         "Disqualified",
     ]
     header.extend(judges)
     header.extend(["Total", "Final Score"])
     writer.writerow(header)
 
-    for evaluation in evaluations:
-        mark_map = {mark.judge_name: mark for mark in evaluation.judge_marks.all()}
+    for project in projects:
+        evaluation = evaluation_map.get(project.id)
+        mark_map = {}
+        total_value = ""
+        final_value = ""
+        evaluated_label = "No"
+        disqualified_label = "Not Evaluated"
+
+        if evaluation:
+            mark_map = {mark.judge_name: mark for mark in evaluation.judge_marks.all()}
+            total_value = str(evaluation.total)
+            final_value = str(evaluation.final_score)
+            evaluated_label = "Yes"
+            disqualified_label = "Yes" if evaluation.is_disqualified else "No"
+
+        member_entries = []
+        for member in project.members.all():
+            entry = member.name or ""
+            if member.email:
+                entry = f"{entry} <{member.email}>".strip()
+            member_entries.append(entry)
+        if not member_entries and isinstance(project.team_members, list):
+            member_entries = [str(value) for value in project.team_members]
 
         row = [
             subsubevent.name,
-            evaluation.project_id,
-            evaluation.project.team_name,
-            evaluation.project.project_topic,
-            "Yes" if evaluation.is_disqualified else "No",
+            project.id,
+            project.team_name,
+            project.project_topic,
+            project.captain_name,
+            project.captain_email,
+            project.captain_phone,
+            "; ".join(filter(None, member_entries)),
+            project.submitted_at.isoformat() if project.submitted_at else "",
+            evaluated_label,
+            disqualified_label,
         ]
 
         for judge_name in judges:
             mark_entry = mark_map.get(judge_name)
             row.append(str(mark_entry.mark) if mark_entry else "")
 
-        row.append(str(evaluation.total))
-        row.append(str(evaluation.final_score))
+        row.append(total_value)
+        row.append(final_value)
 
+        writer.writerow(row)
+
+    if not projects:
+        row = [subsubevent.name] + [""] * (len(header) - 1)
         writer.writerow(row)
 
     csv_buffer.seek(0)
     response = HttpResponse(csv_buffer.getvalue(), content_type="text/csv")
+    filename = slugify(subsubevent.name) or f"subsubevent-{subsubevent_id}"
     response["Content-Disposition"] = (
-        f"attachment; filename=eval_summary_{subsubevent_id}.csv"
+        f'attachment; filename="{filename}-registrations.csv"'
     )
     return response
 
