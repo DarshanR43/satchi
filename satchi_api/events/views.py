@@ -10,6 +10,8 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
 from .models import MainEvent, SubEvent, SubSubEvent
+from api.models import Project
+from eval.models import Evaluation
 from users.models import EventUserMapping, User
 from users.services.roles import promote_user_if_higher
 
@@ -127,7 +129,12 @@ def delete_event(request, level: str, pk: int):
             )
         sub_event.delete()
     elif lvl in ("subsub", "sub_sub"):
-        get_object_or_404(SubSubEvent, pk=pk).delete()
+        subsub_event = get_object_or_404(SubSubEvent, pk=pk)
+        # Remove evaluations first because they protect the SubSubEvent deletion.
+        Evaluation.objects.filter(subsubevent=subsub_event).delete()
+        # Projects cascade to team members automatically once removed.
+        Project.objects.filter(event=subsub_event).delete()
+        subsub_event.delete()
     else:
         return Response({"error": "Invalid level. Use main | sub | subsub."}, status=400)
     return Response(status=status.HTTP_204_NO_CONTENT)
