@@ -103,7 +103,11 @@ const SignupPage = () => {
       },
       "School of Engineering": {
         "B. Tech. in Mechanical Engineering": { years: 4 },
+        "B. Tech. in Electrical and Electronics Engineering": { years: 4 },
+        "B. Tech. in Electrical and Computer Science Engineering": { years: 4 },
         "B. Tech. in Electronics and Communication Engineering": { years: 4 },
+        "B. Tech. in Computer and Communication Engineering": { years: 4 },
+        "B. Tech. in AerospaceEngineering": { years: 4 },
         "M. Tech. in VLSI Design": { years: 2 },
         "Ph. D. in Cyber Security": { years: 0 },
       },
