@@ -33,7 +33,7 @@ const ProfilePage = () => {
                 return;
             }
             try {
-                const response = await axios.get(`${API_URL}/api/my-registrations/`);
+                const response = await axios.get(`${API_URL}/my-registrations/`);
                 setRegistrations(response.data?.registrations || []);
                 setRegistrationsError(null);
             } catch (error) {
