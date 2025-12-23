@@ -37,21 +37,30 @@ def submit_project(request, event_id):
         except SubSubEvent.DoesNotExist:
             return Response({"error": "Event not found."}, status=status.HTTP_404_NOT_FOUND)
 
+        cleaned_team_members = []
         totalEmails = []
-        totalEmails.append(team_captain_email.strip())
+        captain_email_clean = (team_captain_email or '').strip()
+        if not captain_email_clean:
+            return Response({"error": "Captain email is required."}, status=status.HTTP_400_BAD_REQUEST)
+
+        totalEmails.append(captain_email_clean)
         for member in team_members:
-            totalEmails.append(member.strip())
-        
-        if len(totalEmails) != len(set(totalEmails)):
+            member_email_clean = (member or '').strip()
+            if member_email_clean:
+                cleaned_team_members.append(member_email_clean)
+                totalEmails.append(member_email_clean)
+
+        normalizedEmails = [email.lower() for email in totalEmails]
+        if len(normalizedEmails) != len(set(normalizedEmails)):
             return Response({"error": "Duplicate email addresses found."}, status=status.HTTP_400_BAD_REQUEST)
 
         femaleCount = 0
         for email in totalEmails:
             #if not User.objects.filter(email=email).exists():
             #    return Response({"error": f"Email {email} is not registered with Gyan. Please Do create a Account"}, status=status.HTTP_400_BAD_REQUEST)
-            if TeamMember.objects.filter(email=email, project__event=event).exists():
+            if TeamMember.objects.filter(email__iexact=email, project__event=event).exists():
                 return Response({"error": f"Email {email} is already registered in another project for this event."}, status=status.HTTP_400_BAD_REQUEST)
-            if Project.objects.filter(captain_email=email, event=event).exists():
+            if Project.objects.filter(captain_email__iexact=email, event=event).exists():
                 return Response({"error": f"Email {email} is already registered in another project for this event."}, status=status.HTTP_400_BAD_REQUEST)
         """    
             try:
@@ -72,9 +81,9 @@ def submit_project(request, event_id):
             team_name=team_name,
             project_topic=project_name,
             captain_name=team_captain,
-            captain_email=team_captain_email,
+            captain_email=captain_email_clean,
             captain_phone=team_captain_phone,
-            team_members=team_members,
+            team_members=cleaned_team_members,
             faculty_mentor_name=faculty_mentor_name,
         )
         project.save()
