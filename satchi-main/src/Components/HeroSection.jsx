@@ -1,6 +1,9 @@
 import React from "react";
 import { motion } from "framer-motion";
+import { Link } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
+
+const MotionLink = motion(Link);
 
 const HeroSection = () => {
   const { isAuthenticated } = useAuth();
@@ -45,20 +48,20 @@ const HeroSection = () => {
           transition={{ duration: 1, delay: 0.6 }}
           className="mt-12 flex justify-center items-center gap-6 flex-wrap"
         >
-          <motion.a
-              href="/events"
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-              className="px-8 py-3 rounded-full text-base font-semibold 
-              bg-gray-900 text-white
-              transition-all duration-300 cursor-pointer shadow-lg hover:shadow-2xl"
-            >
-              Explore Events
-            </motion.a>
+          <MotionLink
+            to="/events"
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+            className="px-8 py-3 rounded-full text-base font-semibold 
+            bg-gray-900 text-white
+            transition-all duration-300 cursor-pointer shadow-lg hover:shadow-2xl"
+          >
+            Explore Events
+          </MotionLink>
           
             {isAuthenticated ? (
-              <motion.a
-                href="/profile"
+              <MotionLink
+                to="/profile"
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
                 className="px-8 py-3 rounded-full text-base font-semibold 
@@ -66,10 +69,10 @@ const HeroSection = () => {
                 hover:bg-gray-200 hover:border-gray-400 transition duration-300"
               >
                 View Profile
-              </motion.a>
+              </MotionLink>
             ) : (
-              <motion.a
-                href="/login"
+              <MotionLink
+                to="/login"
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
                 className="px-8 py-3 rounded-full text-base font-semibold 
@@ -77,7 +80,7 @@ const HeroSection = () => {
                 hover:bg-gray-100 hover:border-gray-400 transition duration-300"
               >
                 Login / Register
-              </motion.a>
+              </MotionLink>
             )}
         </motion.div>
       </div>
