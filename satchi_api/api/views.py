@@ -46,20 +46,20 @@ def submit_project(request, event_id):
             return Response({"error": "Duplicate email addresses found."}, status=status.HTTP_400_BAD_REQUEST)
 
         femaleCount = 0
-        for mails in totalEmails:
-            #if not User.objects.filter(email=mails).exists():
-            #    return Response({"error": f"Email {mails} is not registered with Gyan. Please Do create a Account"}, status=status.HTTP_400_BAD_REQUEST)
-            if TeamMember.objects.filter(email=mails).exists():
-                return Response({"error": f"Email {mails} is already registered in another project."}, status=status.HTTP_400_BAD_REQUEST)
-            if Project.objects.filter(captain_email=mails).exists():
-                return Response({"error": f"Email {mails} is already registered in another project."}, status=status.HTTP_400_BAD_REQUEST)
+        for email in totalEmails:
+            #if not User.objects.filter(email=email).exists():
+            #    return Response({"error": f"Email {email} is not registered with Gyan. Please Do create a Account"}, status=status.HTTP_400_BAD_REQUEST)
+            if TeamMember.objects.filter(email=email, project__event=event).exists():
+                return Response({"error": f"Email {email} is already registered in another project for this event."}, status=status.HTTP_400_BAD_REQUEST)
+            if Project.objects.filter(captain_email=email, event=event).exists():
+                return Response({"error": f"Email {email} is already registered in another project for this event."}, status=status.HTTP_400_BAD_REQUEST)
         """    
             try:
-                user = User.objects.get(email=mails)
+                user = User.objects.get(email=email)
                 if user.sex == 'female':
                     femaleCount += 1
             except User.DoesNotExist:
-                 return Response({"error": f"Email {mails} is not registered with Gyan. Please Do create a Account"}, status=status.HTTP_400_BAD_REQUEST)
+                 return Response({"error": f"Email {email} is not registered with Gyan. Please Do create a Account"}, status=status.HTTP_400_BAD_REQUEST)
 
         if minFemaleParticipants and femaleCount < minFemaleParticipants:
             return Response({"error": f"At least {minFemaleParticipants} female participants are required."}, status=status.HTTP_400_BAD_REQUEST)
@@ -79,9 +79,9 @@ def submit_project(request, event_id):
         )
         project.save()
 
-        for mails in totalEmails:
+        for email in totalEmails:
             try:
-                user = User.objects.get(email=mails)
+                user = User.objects.get(email=email)
                 TeamMember.objects.create(
                     name=user.full_name,
                     email=user.email,
@@ -91,7 +91,7 @@ def submit_project(request, event_id):
             except User.DoesNotExist:
                 TeamMember.objects.create(
                     name="Unknown",
-                    email=mails,
+                    email=email,
                     phone="",
                     project=project
                 )
