@@ -5,7 +5,7 @@ import axios from 'axios';
 const AuthContext = createContext();
 
 // API base URL
-const API_URL = 'http://172.17.9.96/';
+const API_URL = 'http://172.17.9.96';
 
 
 
