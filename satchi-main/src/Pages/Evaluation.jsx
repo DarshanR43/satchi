@@ -5,7 +5,7 @@ import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
 import { Navigate } from 'react-router-dom';
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000';
+const API_URL = import.meta.env.VITE_API_URL;
 
 // --- Custom Searchable Dropdown Component ---
 const SearchableDropdown = ({ label, value, onChange, options, loading, disabled, valueKey = 'id', nameKey = 'name' }) => {

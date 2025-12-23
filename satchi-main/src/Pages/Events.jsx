@@ -9,7 +9,7 @@ import EventSidebar from '../Components/events/EventCards';
 import EventContent from '../Components/events/StatusPill'; // Imported as StatusPill in your original code
 import SubSubEventModal from '../Components/events/SubSubEventModal';
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000';
+const API_URL = import.meta.env.VITE_API_URL;
 
 const EventsPage = () => {
   const [events, setEvents] = useState([]);
