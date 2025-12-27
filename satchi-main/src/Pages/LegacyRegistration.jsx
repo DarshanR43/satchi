@@ -137,6 +137,7 @@ const LegacyRegistrationPage = () => {
   const [subEvents, setSubEvents] = useState([]);
   const [subSubEvents, setSubSubEvents] = useState([]);
   const [judges, setJudges] = useState([]);
+  const [selectedEventMeta, setSelectedEventMeta] = useState(null);
 
   const [selectedMainEvent, setSelectedMainEvent] = useState('');
   const [selectedSubEvent, setSelectedSubEvent] = useState('');
@@ -152,6 +153,7 @@ const LegacyRegistrationPage = () => {
     submitted_at: '',
   });
 
+  const emptyMember = useMemo(() => ({ name: '', email: '', phone: '' }), []);
   const [teamMembers, setTeamMembers] = useState([{ name: '', email: '', phone: '' }]);
   const [evaluationEnabled, setEvaluationEnabled] = useState(true);
   const [evaluationMarks, setEvaluationMarks] = useState([]);
@@ -196,6 +198,7 @@ const LegacyRegistrationPage = () => {
     };
     setSelectedSubEvent('');
     setSelectedSubSubEvent('');
+    setSelectedEventMeta(null);
     setSubSubEvents([]);
     setJudges([]);
     fetchSubEvents();
@@ -227,10 +230,13 @@ const LegacyRegistrationPage = () => {
 
   useEffect(() => {
     if (!selectedSubSubEvent) {
+      setSelectedEventMeta(null);
       setJudges([]);
       setEvaluationMarks([]);
       return;
     }
+    const meta = subSubEvents.find(evt => String(evt.id) === String(selectedSubSubEvent)) || null;
+    setSelectedEventMeta(meta);
     const fetchJudges = async () => {
       setLoading(prev => ({ ...prev, judges: true }));
       try {
@@ -272,6 +278,18 @@ const LegacyRegistrationPage = () => {
     }
   }, [evaluationEnabled, evaluationMarks.length, judges.length]);
 
+  useEffect(() => {
+    if (!selectedEventMeta) return;
+    const minTeam = Number(selectedEventMeta.minTeamSize) || 1;
+    const maxTeam = selectedEventMeta.maxTeamSize ? Number(selectedEventMeta.maxTeamSize) : null;
+    const requiredMembers = Math.max(0, minTeam - 1);
+    const maxAdditional = maxTeam ? Math.max(0, maxTeam - 1) : null;
+    const initialCount = requiredMembers > 0
+      ? requiredMembers
+      : (maxAdditional !== null ? Math.min(1, maxAdditional) : 1);
+    setTeamMembers(Array.from({ length: initialCount }, () => ({ ...emptyMember })));
+  }, [selectedEventMeta, emptyMember]);
+
   const handleProjectChange = (field) => (event) => {
     const value = event.target.value;
     setProjectDetails(prev => ({ ...prev, [field]: value }));
@@ -282,11 +300,27 @@ const LegacyRegistrationPage = () => {
   };
 
   const addTeamMember = () => {
-    setTeamMembers(prev => [...prev, { name: '', email: '', phone: '' }]);
+    setTeamMembers(prev => {
+      const maxMembers = selectedEventMeta && selectedEventMeta.maxTeamSize
+        ? Math.max(0, Number(selectedEventMeta.maxTeamSize) - 1)
+        : null;
+      if (maxMembers !== null && prev.length >= maxMembers) {
+        return prev;
+      }
+      return [...prev, { ...emptyMember }];
+    });
   };
 
   const removeTeamMember = (index) => {
-    setTeamMembers(prev => prev.filter((_, idx) => idx !== index));
+    setTeamMembers(prev => {
+      const minMembers = selectedEventMeta && selectedEventMeta.minTeamSize
+        ? Math.max(0, Number(selectedEventMeta.minTeamSize) - 1)
+        : 0;
+      if (prev.length <= minMembers) {
+        return prev;
+      }
+      return prev.filter((_, idx) => idx !== index);
+    });
   };
 
   const handleMarkChange = (index, field, value) => {
@@ -320,6 +354,13 @@ const LegacyRegistrationPage = () => {
       .filter(member => member.name || member.email || member.phone);
   };
 
+  const filledMemberCount = useMemo(() => teamMembers.reduce((count, member) => {
+    if ((member.name && member.name.trim()) || (member.email && member.email.trim()) || (member.phone && member.phone.trim())) {
+      return count + 1;
+    }
+    return count;
+  }, 0), [teamMembers]);
+
   const sanitizeMarks = () => {
     return evaluationMarks
       .map(mark => ({
@@ -342,6 +383,15 @@ const LegacyRegistrationPage = () => {
 
     const members = sanitizeMembers();
     const submittedAtIso = getSubmittedAtIso();
+    const teamSize = members.length + 1;
+    if (minTeamDisplay && teamSize < minTeamDisplay) {
+      setStatus({ type: 'error', message: `At least ${minTeamDisplay} participants are required for this competition.` });
+      return;
+    }
+    if (maxTeamDisplay && teamSize > maxTeamDisplay) {
+      setStatus({ type: 'error', message: `No more than ${maxTeamDisplay} participants are permitted for this competition.` });
+      return;
+    }
 
     const payload = {
       subsubevent_id: Number(selectedSubSubEvent),
@@ -389,7 +439,15 @@ const LegacyRegistrationPage = () => {
       });
     } catch (error) {
       console.error('Legacy registration submission failed', error);
-      const fallback = error.response?.data?.detail || error.response?.data?.error;
+      const payload = error.response?.data;
+      let fallback = payload?.detail || payload?.error;
+      if (!fallback && payload?.project) {
+        if (typeof payload.project === 'string') {
+          fallback = payload.project;
+        } else if (payload.project.team_members) {
+          fallback = payload.project.team_members;
+        }
+      }
       setStatus({ type: 'error', message: fallback || 'Submission failed. Please review inputs and retry.' });
     } finally {
       setLoading(prev => ({ ...prev, submit: false }));
@@ -398,6 +456,20 @@ const LegacyRegistrationPage = () => {
 
   if (!isAuthenticated) return <Navigate to="/login" replace />;
   if (!isPrivileged) return <Navigate to="/" replace />;
+
+  const minTeamDisplay = selectedEventMeta ? Number(selectedEventMeta.minTeamSize ?? 1) : null;
+  const rawMaxTeam = selectedEventMeta?.maxTeamSize;
+  const maxTeamDisplay = rawMaxTeam !== undefined && rawMaxTeam !== null && rawMaxTeam !== 0
+    ? Number(rawMaxTeam)
+    : null;
+  const minFemaleDisplay = selectedEventMeta ? Number(selectedEventMeta.minFemaleParticipants ?? 0) : null;
+  const mentorRequiredDisplay = selectedEventMeta?.isFacultyMentorRequired ? 'Yes' : 'No';
+  const totalPeople = 1 + filledMemberCount;
+  const requiredAdditionalMembers = minTeamDisplay ? Math.max(0, minTeamDisplay - 1) : 0;
+  const maxAdditionalMembers = maxTeamDisplay ? Math.max(0, maxTeamDisplay - 1) : null;
+  const canAddMoreMembers = maxAdditionalMembers === null || teamMembers.length < maxAdditionalMembers;
+  const minRowsToKeep = requiredAdditionalMembers;
+  const canRemoveMembers = teamMembers.length > minRowsToKeep;
 
   return (
     <div className="relative w-full min-h-screen px-4 sm:px-6 lg:px-8 py-20 font-body text-gray-800">
@@ -431,6 +503,26 @@ const LegacyRegistrationPage = () => {
               <SearchableDropdown label="Sub-Event" value={selectedSubEvent} onChange={(e) => setSelectedSubEvent(e.target.value)} options={subEvents} loading={loading.sub} disabled={!selectedMainEvent || loading.sub} />
               <SearchableDropdown label="Competition" value={selectedSubSubEvent} onChange={(e) => setSelectedSubSubEvent(e.target.value)} options={subSubEvents} loading={loading.subsub} disabled={!selectedSubEvent || loading.subsub} />
             </div>
+            {selectedEventMeta && (
+              <div className="mt-6 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                <div className="rounded-xl border border-orange-200 bg-orange-50/70 p-4">
+                  <p className="text-xs uppercase tracking-wide text-orange-600 font-semibold">Allowed Team Size</p>
+                  <p className="text-lg font-semibold text-gray-700 mt-1">{minTeamDisplay ?? '—'} - {maxTeamDisplay ?? '∞'}</p>
+                </div>
+                <div className="rounded-xl border border-orange-200 bg-orange-50/70 p-4">
+                  <p className="text-xs uppercase tracking-wide text-orange-600 font-semibold">Minimum Female Participants</p>
+                  <p className="text-lg font-semibold text-gray-700 mt-1">{minFemaleDisplay ?? '—'}</p>
+                </div>
+                <div className="rounded-xl border border-orange-200 bg-orange-50/70 p-4">
+                  <p className="text-xs uppercase tracking-wide text-orange-600 font-semibold">Faculty Mentor Required</p>
+                  <p className="text-lg font-semibold text-gray-700 mt-1">{mentorRequiredDisplay}</p>
+                </div>
+                <div className="rounded-xl border border-orange-200 bg-orange-50/70 p-4">
+                  <p className="text-xs uppercase tracking-wide text-orange-600 font-semibold">Participants Entered</p>
+                  <p className="text-lg font-semibold text-gray-700 mt-1">{totalPeople} <span className="text-sm text-gray-500">(min {minTeamDisplay ?? '—'})</span></p>
+                </div>
+              </div>
+            )}
           </motion.section>
 
           <motion.section initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="bg-white/85 border border-gray-200/80 rounded-2xl shadow-xl backdrop-blur p-6 sm:p-8">
@@ -475,7 +567,12 @@ const LegacyRegistrationPage = () => {
             <div className="mt-8">
               <div className="flex items-center justify-between mb-4">
                 <h3 className="text-lg font-semibold text-gray-700">Additional Team Members</h3>
-                <button type="button" onClick={addTeamMember} className="flex items-center gap-2 px-4 py-2 rounded-lg bg-orange-100/90 text-[#df9400] font-semibold hover:bg-orange-200/90 transition">
+                <button
+                  type="button"
+                  onClick={addTeamMember}
+                  disabled={!canAddMoreMembers}
+                  className="flex items-center gap-2 px-4 py-2 rounded-lg bg-orange-100/90 text-[#df9400] font-semibold hover:bg-orange-200/90 transition disabled:opacity-50 disabled:cursor-not-allowed"
+                >
                   <Plus size={16} /> Add Member
                 </button>
               </div>
@@ -495,12 +592,20 @@ const LegacyRegistrationPage = () => {
                       <input type="text" value={member.phone} onChange={(e) => handleMemberChange(index, 'phone', e.target.value)} className="w-full px-4 py-2.5 rounded-lg border border-gray-300 bg-gray-50 focus:outline-none focus:ring-2 focus:ring-[#ff6a3c] focus:border-transparent" />
                     </div>
                     <div className="md:col-span-1 flex justify-end">
-                      <button type="button" onClick={() => removeTeamMember(index)} className="px-4 py-2 rounded-lg bg-red-100/90 text-red-600 font-semibold hover:bg-red-200/90 transition" disabled={teamMembers.length === 1}>
+                      <button
+                        type="button"
+                        onClick={() => removeTeamMember(index)}
+                        className="px-4 py-2 rounded-lg bg-red-100/90 text-red-600 font-semibold hover:bg-red-200/90 transition disabled:opacity-50 disabled:cursor-not-allowed"
+                        disabled={!canRemoveMembers}
+                      >
                         <Minus size={16} /> Remove
                       </button>
                     </div>
                   </div>
                 ))}
+                {teamMembers.length === 0 && (
+                  <p className="text-sm text-gray-600">This competition does not require additional members beyond the captain.</p>
+                )}
               </div>
             </div>
           </motion.section>

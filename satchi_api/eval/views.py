@@ -601,6 +601,40 @@ def create_legacy_registration(request):
         "phone": captain_phone,
     })
 
+    seen_members = set()
+    cleaned_member_entries = []
+    for entry in member_entries:
+        if not any([entry.get("name"), entry.get("email"), entry.get("phone")]):
+            continue
+        key = (entry.get("email") or entry.get("name"), entry.get("phone"))
+        if key in seen_members:
+            continue
+        seen_members.add(key)
+        cleaned_member_entries.append({
+            "name": entry.get("name") or "Unknown",
+            "email": entry.get("email") or "",
+            "phone": entry.get("phone") or "",
+        })
+
+    team_member_count = len(cleaned_member_entries)
+    min_team_size = getattr(subsubevent, "minTeamSize", None) or 1
+    max_team_size_raw = getattr(subsubevent, "maxTeamSize", None)
+    max_team_size = max_team_size_raw if max_team_size_raw else None
+
+    if team_member_count < min_team_size:
+        raise ValidationError({
+            "project": {
+                "team_members": f"At least {min_team_size} participants are required; received {team_member_count}.",
+            }
+        })
+
+    if max_team_size and team_member_count > max_team_size:
+        raise ValidationError({
+            "project": {
+                "team_members": f"No more than {max_team_size} participants are allowed; received {team_member_count}.",
+            }
+        })
+
     with transaction.atomic():
         project = Project.objects.create(
             event=subsubevent,
@@ -617,25 +651,16 @@ def create_legacy_registration(request):
             project.submitted_at = submitted_at_override
             project.save(update_fields=["submitted_at"])
 
-        seen_members = set()
-        members_to_create = []
-        for entry in member_entries:
-            if not any([entry.get("name"), entry.get("email"), entry.get("phone")]):
-                continue
-            key = (entry.get("email") or entry.get("name"), entry.get("phone"))
-            if key in seen_members:
-                continue
-            seen_members.add(key)
-            members_to_create.append(
+        if cleaned_member_entries:
+            TeamMember.objects.bulk_create([
                 TeamMember(
-                    name=entry.get("name") or "Unknown",
-                    email=entry.get("email") or "",
-                    phone=entry.get("phone") or "",
+                    name=entry["name"],
+                    email=entry["email"],
+                    phone=entry["phone"],
                     project=project,
                 )
-            )
-        if members_to_create:
-            TeamMember.objects.bulk_create(members_to_create)
+                for entry in cleaned_member_entries
+            ])
 
         evaluation_payload = payload.get("evaluation")
         evaluation_summary = None
@@ -692,6 +717,9 @@ def create_legacy_registration(request):
             "id": project.id,
             "team_name": project.team_name,
             "subsubevent_id": subsubevent.id,
+            "team_size": team_member_count,
+            "min_team_size": min_team_size,
+            "max_team_size": max_team_size,
         },
         "evaluation": evaluation_summary,
     }
