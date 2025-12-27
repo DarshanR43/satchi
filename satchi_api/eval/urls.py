@@ -11,4 +11,5 @@ urlpatterns = [
     path("subsubevents/<int:subsubevent_id>/summary.csv", download_evaluation_summary, name="download-summary"),
     path("evaluations/detail/", get_evaluation_submission, name="get-evaluation-detail"),
     path("evaluations/submit/", submit_evaluation_marks, name="submit-evaluation"), 
+    path("legacy/registrations/", create_legacy_registration, name="create-legacy-registration"),
 ]

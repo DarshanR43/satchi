@@ -11,6 +11,7 @@ import Events from "./Pages/Events";
 import Admin from "./Pages/Admin";
 import EvaluationPage from "./Pages/Evaluation";
 import ProfilePage from "./Pages/Profile";
+import LegacyRegistrationPage from "./Pages/LegacyRegistration";
 
 const App = () => {
   return (
@@ -24,6 +25,7 @@ const App = () => {
             <Route path="admin" element={<Admin />} />
             <Route path="login" element={<Login />} />
             <Route path="evaluate" element={<EvaluationPage/>}/>
+            <Route path="legacy" element={<LegacyRegistrationPage />} />
             {/* --- UPDATED ROUTES --- */}
             {/* Route for generic registration */}
             <Route path="register" element={<Registration />} />

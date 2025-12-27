@@ -40,7 +40,11 @@ const Header = () => {
   const menuItems = [
     { label: "Home", path: "/" },
     { label: "Events", path: "/events" },
-    ...(isAdmin ? [{ label: "Admin", path: "/admin" },{ label: "Evaluation", path: "/evaluate" }] : []),
+    ...(isAdmin ? [
+      { label: "Admin", path: "/admin" },
+      { label: "Evaluation", path: "/evaluate" },
+      { label: "Legacy", path: "/legacy" },
+    ] : []),
     ...(isAuthenticated
       ? [{ label: "Profile", path: "/profile" }]
       : [{ label: "Login", path: "/login" }]),

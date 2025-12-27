@@ -4,7 +4,7 @@ from rest_framework import status
 
 from events.models import MainEvent, SubEvent, SubSubEvent
 from users.models import User
-from api.models import Project
+from api.models import Project, TeamMember
 from api.serializers import ProjectSerializer
 from eval.models import Evaluation
 
@@ -12,7 +12,7 @@ from django.db import transaction, IntegrityError
 from django.db.models import Exists, OuterRef
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404
-from rest_framework.permissions import IsAuthenticatedOrReadOnly
+from rest_framework.permissions import IsAuthenticated, IsAuthenticatedOrReadOnly
 from decimal import Decimal
 import csv
 from io import StringIO
@@ -24,7 +24,19 @@ from .serializers import (
     SubSubEventJudgeSerializer,
     JudgeListResponseSerializer,
     CreateEvaluationSerializer,
+    LegacyRegistrationSerializer,
 )
+
+
+PRIVILEGED_ROLES = {
+    User.Role.SUPERADMIN,
+    User.Role.EVENTADMIN,
+    User.Role.SUBEVENTADMIN,
+    User.Role.SUBEVENTMANAGER,
+    User.Role.SUBSUBEVENTMANAGER,
+    User.Role.EVENTMANAGER,
+    User.Role.COORDINATOR,
+}
 
 @api_view(['POST'])
 def get_main_events(request):
@@ -163,7 +175,7 @@ from decimal import Decimal, InvalidOperation
 from django.db import transaction
 from django.shortcuts import get_object_or_404
 from rest_framework.decorators import api_view, permission_classes
-from rest_framework.permissions import IsAuthenticatedOrReadOnly
+from rest_framework.permissions import IsAuthenticated, IsAuthenticatedOrReadOnly
 from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.exceptions import ValidationError
@@ -519,3 +531,169 @@ def submit_evaluation_marks(request):
     }
     logger.debug("submit_evaluation_marks completed successfully: %s", resp)
     return Response(resp, status=status.HTTP_201_CREATED)
+
+
+@api_view(["POST"])
+@permission_classes([IsAuthenticated])
+def create_legacy_registration(request):
+    if not request.user.is_authenticated:
+        return Response({"detail": "Authentication required."}, status=status.HTTP_403_FORBIDDEN)
+
+    user_role = getattr(request.user, "role", None)
+    if not (getattr(request.user, "is_superuser", False) or user_role in PRIVILEGED_ROLES):
+        return Response(
+            {"detail": "You are not authorized to record legacy registrations."},
+            status=status.HTTP_403_FORBIDDEN,
+        )
+
+    serializer = LegacyRegistrationSerializer(data=request.data)
+    serializer.is_valid(raise_exception=True)
+    payload = serializer.validated_data
+
+    subsubevent = get_object_or_404(SubSubEvent, id=payload["subsubevent_id"])
+    project_payload = payload.get("project", {})
+    team_members_payload = project_payload.get("team_members") or []
+    submitted_at_override = project_payload.get("submitted_at")
+
+    team_name = (project_payload.get("team_name") or "").strip()
+    project_topic = (project_payload.get("project_topic") or "").strip()
+    captain_email = (project_payload.get("captain_email") or "").strip().lower()
+    captain_name = (project_payload.get("captain_name") or "").strip()
+    captain_phone = (project_payload.get("captain_phone") or "").strip()
+    faculty_mentor = (project_payload.get("faculty_mentor_name") or "").strip()
+
+    required_values = {
+        "team_name": team_name,
+        "project_topic": project_topic,
+        "captain_name": captain_name,
+        "captain_email": captain_email,
+    }
+    missing_fields = {field: "This field is required." for field, value in required_values.items() if not value}
+    if missing_fields:
+        raise ValidationError({"project": missing_fields})
+
+    team_members_json = []
+    member_entries = []
+
+    for raw_member in team_members_payload:
+        name = (raw_member.get("name") or "").strip()
+        email = (raw_member.get("email") or "").strip().lower()
+        phone = (raw_member.get("phone") or "").strip()
+
+        label_parts = []
+        if name:
+            label_parts.append(name)
+        if email:
+            label_parts.append(f"<{email}>")
+        if label_parts:
+            team_members_json.append(" ".join(label_parts))
+
+        if name or email or phone:
+            member_entries.append({
+                "name": name or "Unknown",
+                "email": email,
+                "phone": phone,
+            })
+
+    member_entries.insert(0, {
+        "name": captain_name or "Team Captain",
+        "email": captain_email,
+        "phone": captain_phone,
+    })
+
+    with transaction.atomic():
+        project = Project.objects.create(
+            event=subsubevent,
+            team_name=team_name,
+            project_topic=project_topic,
+            captain_name=captain_name,
+            captain_email=captain_email,
+            captain_phone=captain_phone,
+            team_members=team_members_json,
+            faculty_mentor_name=faculty_mentor,
+        )
+
+        if submitted_at_override:
+            project.submitted_at = submitted_at_override
+            project.save(update_fields=["submitted_at"])
+
+        seen_members = set()
+        members_to_create = []
+        for entry in member_entries:
+            if not any([entry.get("name"), entry.get("email"), entry.get("phone")]):
+                continue
+            key = (entry.get("email") or entry.get("name"), entry.get("phone"))
+            if key in seen_members:
+                continue
+            seen_members.add(key)
+            members_to_create.append(
+                TeamMember(
+                    name=entry.get("name") or "Unknown",
+                    email=entry.get("email") or "",
+                    phone=entry.get("phone") or "",
+                    project=project,
+                )
+            )
+        if members_to_create:
+            TeamMember.objects.bulk_create(members_to_create)
+
+        evaluation_payload = payload.get("evaluation")
+        evaluation_summary = None
+        if evaluation_payload:
+            marks_payload = evaluation_payload.get("marks") or []
+            evaluation = Evaluation.objects.create(
+                project=project,
+                subsubevent=subsubevent,
+                is_disqualified=evaluation_payload.get("is_disqualified", False),
+                remarks=evaluation_payload.get("remarks", "") or "",
+            )
+
+            marks_to_create = []
+            for idx, mark in enumerate(marks_payload, start=1):
+                judge_name = (mark.get("judge_name") or "").strip()
+                subsubevent_judge = None
+                judge_id = mark.get("subsubevent_judge_id")
+                if judge_id is not None:
+                    subsubevent_judge = SubSubEventJudge.objects.filter(
+                        id=judge_id,
+                        subsubevent=subsubevent,
+                    ).first()
+                    if subsubevent_judge and not judge_name:
+                        judge_name = subsubevent_judge.name
+                if not judge_name:
+                    raise ValidationError({"evaluation": {"marks": {idx - 1: {"judge_name": "This field is required."}}}})
+
+                marks_to_create.append(
+                    EvaluationJudgeMark(
+                        evaluation=evaluation,
+                        subsubevent_judge=subsubevent_judge,
+                        judge_name=judge_name,
+                        mark=mark.get("mark"),
+                        comments=mark.get("comments", "") or "",
+                    )
+                )
+
+            if marks_to_create:
+                EvaluationJudgeMark.objects.bulk_create(marks_to_create)
+                evaluation.recalculate_scores()
+                evaluation.save(update_fields=["number_of_judges", "total", "final_score", "is_disqualified", "remarks"])
+
+            evaluation_summary = {
+                "id": evaluation.id,
+                "number_of_judges": evaluation.number_of_judges,
+                "total": str(evaluation.total),
+                "final_score": str(evaluation.final_score),
+                "is_disqualified": evaluation.is_disqualified,
+            }
+
+    response_payload = {
+        "message": "Legacy registration recorded successfully.",
+        "project": {
+            "id": project.id,
+            "team_name": project.team_name,
+            "subsubevent_id": subsubevent.id,
+        },
+        "evaluation": evaluation_summary,
+    }
+
+    return Response(response_payload, status=status.HTTP_201_CREATED)

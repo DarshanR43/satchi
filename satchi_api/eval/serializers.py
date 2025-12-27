@@ -59,3 +59,49 @@ class CreateEvaluationSerializer(serializers.Serializer):
         if not isinstance(v, list) or len(v) == 0:
             raise serializers.ValidationError("You must provide at least one judge mark.")
         return v
+
+
+class LegacyTeamMemberInputSerializer(serializers.Serializer):
+    name = serializers.CharField(max_length=100, required=False, allow_blank=True)
+    email = serializers.EmailField(required=False, allow_blank=True)
+    phone = serializers.CharField(max_length=20, required=False, allow_blank=True)
+
+
+class LegacyProjectInputSerializer(serializers.Serializer):
+    team_name = serializers.CharField(max_length=100)
+    project_topic = serializers.CharField()
+    captain_name = serializers.CharField(max_length=100)
+    captain_email = serializers.EmailField()
+    captain_phone = serializers.CharField(max_length=20, required=False, allow_blank=True)
+    faculty_mentor_name = serializers.CharField(max_length=100, required=False, allow_blank=True, allow_null=True)
+    submitted_at = serializers.DateTimeField(required=False)
+    team_members = LegacyTeamMemberInputSerializer(many=True, required=False)
+
+
+class LegacyEvaluationMarkSerializer(serializers.Serializer):
+    judge_name = serializers.CharField(max_length=200, required=False, allow_blank=True)
+    mark = serializers.DecimalField(max_digits=7, decimal_places=2)
+    comments = serializers.CharField(required=False, allow_blank=True, allow_null=True)
+    subsubevent_judge_id = serializers.IntegerField(required=False, allow_null=True)
+
+
+class LegacyEvaluationInputSerializer(serializers.Serializer):
+    is_disqualified = serializers.BooleanField(default=False)
+    remarks = serializers.CharField(required=False, allow_blank=True, allow_null=True)
+    marks = LegacyEvaluationMarkSerializer(many=True)
+
+    def validate_marks(self, value):
+        if not value:
+            raise serializers.ValidationError("Provide at least one judge mark.")
+        return value
+
+
+class LegacyRegistrationSerializer(serializers.Serializer):
+    subsubevent_id = serializers.IntegerField()
+    project = LegacyProjectInputSerializer()
+    evaluation = LegacyEvaluationInputSerializer(required=False, allow_null=True)
+
+    def validate_subsubevent_id(self, value):
+        if not SubSubEvent.objects.filter(id=value).exists():
+            raise serializers.ValidationError("SubSubEvent not found.")
+        return value
