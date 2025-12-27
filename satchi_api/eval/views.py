@@ -430,6 +430,7 @@ def download_evaluation_summary(request, subsubevent_id):
     writer.writerow(header)
 
     for project in projects:
+        project_identifier = project.project_code or str(project.id)
         evaluation = evaluation_map.get(project.id)
         mark_map = {}
         total_value = ""
@@ -455,7 +456,7 @@ def download_evaluation_summary(request, subsubevent_id):
 
         row = [
             subsubevent.name,
-            project.id,
+            project_identifier,
             project.team_name,
             project.project_topic,
             project.captain_name,
