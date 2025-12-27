@@ -105,7 +105,10 @@ def submit_project(request, event_id):
                     project=project
                 )
 
-        return Response({"message": "Project submitted successfully."}, status=status.HTTP_201_CREATED)
+        return Response({
+            "message": "Project submitted successfully.",
+            "projectCode": project.project_code,
+        }, status=status.HTTP_201_CREATED)
 
     except Exception as e:
         return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
@@ -143,6 +146,7 @@ def user_registrations(request):
 
         payload.append({
             'projectId': project.id,
+            'projectCode': project.project_code,
             'teamName': project.team_name,
             'projectTopic': project.project_topic,
             'role': role,
