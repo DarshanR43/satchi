@@ -3,7 +3,7 @@ from rest_framework.response import Response
 from rest_framework import status
 
 from events.models import MainEvent, SubEvent, SubSubEvent
-from users.models import User
+from users.models import User, EventUserMapping
 from api.models import Project, TeamMember
 from api.serializers import ProjectSerializer
 from eval.models import Evaluation
@@ -38,10 +38,124 @@ PRIVILEGED_ROLES = {
     User.Role.COORDINATOR,
 }
 
+MAIN_TREE_ROLES = {
+    User.Role.SUPERADMIN,
+    User.Role.EVENTADMIN,
+    User.Role.EVENTMANAGER,
+}
+
+SUB_TREE_ROLES = {
+    User.Role.SUPERADMIN,
+    User.Role.EVENTADMIN,
+    User.Role.EVENTMANAGER,
+    User.Role.SUBEVENTADMIN,
+    User.Role.SUBEVENTMANAGER,
+}
+
+
+def _build_event_scope(user):
+    if not user.is_authenticated:
+        return {
+            "main_ids": set(),
+            "sub_ids": set(),
+            "subsub_ids": set(),
+            "full_main_ids": set(),
+            "full_sub_ids": set(),
+        }
+
+    if user.is_superuser or getattr(user, "role", None) == User.Role.SUPERADMIN:
+        main_ids = set(MainEvent.objects.values_list("id", flat=True))
+        sub_ids = set(SubEvent.objects.values_list("id", flat=True))
+        subsub_ids = set(SubSubEvent.objects.values_list("id", flat=True))
+        return {
+            "main_ids": main_ids,
+            "sub_ids": sub_ids,
+            "subsub_ids": subsub_ids,
+            "full_main_ids": set(main_ids),
+            "full_sub_ids": set(sub_ids),
+        }
+
+    mappings = list(
+        EventUserMapping.objects.filter(user=user)
+        .select_related(
+            "main_event",
+            "sub_event",
+            "sub_event__parent_event",
+            "sub_sub_event",
+            "sub_sub_event__parent_event",
+            "sub_sub_event__parent_subevent",
+        )
+    )
+
+    main_ids = set()
+    sub_ids = set()
+    subsub_ids = set()
+    full_main_ids = set()
+    full_sub_ids = set()
+
+    for mapping in mappings:
+        if mapping.main_event_id:
+            main_id = mapping.main_event_id
+            main_ids.add(main_id)
+            if mapping.user_role in MAIN_TREE_ROLES:
+                full_main_ids.add(main_id)
+
+        if mapping.sub_event_id and mapping.sub_event:
+            sub = mapping.sub_event
+            sub_id = sub.id
+            sub_ids.add(sub_id)
+            main_ids.add(sub.parent_event_id)
+            if mapping.user_role in SUB_TREE_ROLES:
+                full_sub_ids.add(sub_id)
+            if mapping.user_role in MAIN_TREE_ROLES:
+                full_main_ids.add(sub.parent_event_id)
+
+        if mapping.sub_sub_event_id and mapping.sub_sub_event:
+            subsub = mapping.sub_sub_event
+            subsub_id = subsub.id
+            subsub_ids.add(subsub_id)
+            sub_ids.add(subsub.parent_subevent_id)
+            main_ids.add(subsub.parent_event_id)
+            if mapping.user_role in SUB_TREE_ROLES:
+                full_sub_ids.add(subsub.parent_subevent_id)
+            if mapping.user_role in MAIN_TREE_ROLES:
+                full_main_ids.add(subsub.parent_event_id)
+
+    if full_main_ids:
+        sub_ids.update(
+            SubEvent.objects.filter(parent_event_id__in=full_main_ids).values_list("id", flat=True)
+        )
+        subsub_ids.update(
+            SubSubEvent.objects.filter(parent_event_id__in=full_main_ids).values_list("id", flat=True)
+        )
+
+    if full_sub_ids:
+        subsub_ids.update(
+            SubSubEvent.objects.filter(parent_subevent_id__in=full_sub_ids).values_list("id", flat=True)
+        )
+
+    main_ids |= full_main_ids
+    sub_ids |= full_sub_ids
+
+    return {
+        "main_ids": main_ids,
+        "sub_ids": sub_ids,
+        "subsub_ids": subsub_ids,
+        "full_main_ids": full_main_ids,
+        "full_sub_ids": full_sub_ids,
+    }
+
 @api_view(['POST'])
+@permission_classes([IsAuthenticated])
 def get_main_events(request):
     if request.method == 'POST':
-        main_events = MainEvent.objects.all()
+        scope = _build_event_scope(request.user)
+        main_ids = scope["main_ids"]
+
+        if not main_ids:
+            return Response([], status=status.HTTP_200_OK)
+
+        main_events = MainEvent.objects.filter(id__in=main_ids).order_by("name")
         event_list = []
         for event in main_events:
             event_list.append({
@@ -52,6 +166,7 @@ def get_main_events(request):
         return Response(event_list, status=status.HTTP_200_OK)
 
 @api_view(['POST'])
+@permission_classes([IsAuthenticated])
 def get_subevents(request, main_event_id):
     if request.method == 'POST':
         try:
@@ -59,9 +174,17 @@ def get_subevents(request, main_event_id):
         except MainEvent.DoesNotExist:
             return Response({"error": "Main event not found."}, status=status.HTTP_404_NOT_FOUND)
 
-        subevents = SubEvent.objects.filter(parent_event=main_event)
+        scope = _build_event_scope(request.user)
+        if main_event_id not in scope["main_ids"]:
+            return Response({"error": "You are not authorized for this main event."}, status=status.HTTP_403_FORBIDDEN)
+
+        if main_event_id in scope["full_main_ids"]:
+            subevents = SubEvent.objects.filter(parent_event=main_event)
+        else:
+            subevents = SubEvent.objects.filter(parent_event=main_event, id__in=scope["sub_ids"])
+
         subevent_list = []
-        for subevent in subevents:
+        for subevent in subevents.order_by("name"):
             subevent_list.append({
                 'id': subevent.id,
                 'name': subevent.name,
@@ -70,16 +193,26 @@ def get_subevents(request, main_event_id):
         return Response(subevent_list, status=status.HTTP_200_OK)
 
 @api_view(['POST'])
+@permission_classes([IsAuthenticated])
 def get_subsubevents(request, sub_event_id):
     if request.method == 'POST':
         try:
-            sub_event = SubEvent.objects.get(id=sub_event_id)
+            sub_event = SubEvent.objects.select_related("parent_event").get(id=sub_event_id)
         except SubEvent.DoesNotExist:
             return Response({"error": "Sub event not found."}, status=status.HTTP_404_NOT_FOUND)
 
-        subsubevents = SubSubEvent.objects.filter(parent_subevent=sub_event)
+        scope = _build_event_scope(request.user)
+        parent_main_id = sub_event.parent_event_id
+        if sub_event_id not in scope["sub_ids"] and parent_main_id not in scope["full_main_ids"]:
+            return Response({"error": "You are not authorized for this sub-event."}, status=status.HTTP_403_FORBIDDEN)
+
+        if sub_event_id in scope["full_sub_ids"] or parent_main_id in scope["full_main_ids"]:
+            subsubevents = SubSubEvent.objects.filter(parent_subevent=sub_event)
+        else:
+            subsubevents = SubSubEvent.objects.filter(parent_subevent=sub_event, id__in=scope["subsub_ids"])
+
         subsubevent_list = []
-        for subsubevent in subsubevents:
+        for subsubevent in subsubevents.order_by("name"):
             subsubevent_list.append({
                 'id': subsubevent.id,
                 'name': subsubevent.name,

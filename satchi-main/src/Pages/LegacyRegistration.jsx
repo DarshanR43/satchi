@@ -94,7 +94,7 @@ const SearchableDropdown = ({
             initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -10 }}
-            className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-xl shadow-xl max-h-60 overflow-y-auto custom-scrollbar"
+            className="absolute z-[60] w-full mt-1 bg-white border border-gray-200 rounded-xl shadow-xl max-h-60 overflow-y-auto custom-scrollbar"
           >
             {filteredOptions.length > 0 ? (
               filteredOptions.map((opt) => (
@@ -191,7 +191,11 @@ const LegacyRegistrationPage = () => {
         setSubEvents(response.data || []);
       } catch (error) {
         console.error('Failed to load sub events', error);
-        setStatus({ type: 'error', message: 'Unable to load sub-events.' });
+            if (error.response?.status === 403) {
+              setStatus({ type: 'error', message: 'You do not have access to sub-events under this main event.' });
+            } else {
+              setStatus({ type: 'error', message: 'Unable to load sub-events.' });
+            }
       } finally {
         setLoading(prev => ({ ...prev, sub: false }));
       }
@@ -217,7 +221,11 @@ const LegacyRegistrationPage = () => {
         setSubSubEvents(response.data || []);
       } catch (error) {
         console.error('Failed to load competitions', error);
-        setStatus({ type: 'error', message: 'Unable to load competitions.' });
+            if (error.response?.status === 403) {
+              setStatus({ type: 'error', message: 'You do not have access to competitions under this sub-event.' });
+            } else {
+              setStatus({ type: 'error', message: 'Unable to load competitions.' });
+            }
       } finally {
         setLoading(prev => ({ ...prev, subsub: false }));
       }
@@ -493,7 +501,7 @@ const LegacyRegistrationPage = () => {
         )}
 
         <motion.form onSubmit={handleSubmit} className="space-y-8">
-          <motion.section initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="bg-white/85 border border-gray-200/80 rounded-2xl shadow-xl backdrop-blur p-6 sm:p-8">
+          <motion.section initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="relative z-30 bg-white/85 border border-gray-200/80 rounded-2xl shadow-xl backdrop-blur p-6 sm:p-8 overflow-visible">
             <div className="flex items-center gap-3 mb-6">
               <ClipboardList className="text-[#df9400]" />
               <h2 className="text-xl font-semibold text-gray-700">Event Selection</h2>
@@ -503,6 +511,9 @@ const LegacyRegistrationPage = () => {
               <SearchableDropdown label="Sub-Event" value={selectedSubEvent} onChange={(e) => setSelectedSubEvent(e.target.value)} options={subEvents} loading={loading.sub} disabled={!selectedMainEvent || loading.sub} />
               <SearchableDropdown label="Competition" value={selectedSubSubEvent} onChange={(e) => setSelectedSubSubEvent(e.target.value)} options={subSubEvents} loading={loading.subsub} disabled={!selectedSubEvent || loading.subsub} />
             </div>
+            {!loading.main && mainEvents.length === 0 && (
+              <p className="mt-4 text-sm text-gray-500">No events are currently assigned to your account. Please contact an administrator for access.</p>
+            )}
             {selectedEventMeta && (
               <div className="mt-6 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                 <div className="rounded-xl border border-orange-200 bg-orange-50/70 p-4">
@@ -525,7 +536,7 @@ const LegacyRegistrationPage = () => {
             )}
           </motion.section>
 
-          <motion.section initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="bg-white/85 border border-gray-200/80 rounded-2xl shadow-xl backdrop-blur p-6 sm:p-8">
+          <motion.section initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="relative z-20 bg-white/85 border border-gray-200/80 rounded-2xl shadow-xl backdrop-blur p-6 sm:p-8">
             <div className="flex items-center gap-3 mb-6">
               <Users className="text-[#df9400]" />
               <h2 className="text-xl font-semibold text-gray-700">Project & Team Details</h2>
@@ -610,7 +621,7 @@ const LegacyRegistrationPage = () => {
             </div>
           </motion.section>
 
-          <motion.section initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="bg-white/85 border border-gray-200/80 rounded-2xl shadow-xl backdrop-blur p-6 sm:p-8">
+          <motion.section initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="relative z-10 bg-white/85 border border-gray-200/80 rounded-2xl shadow-xl backdrop-blur p-6 sm:p-8">
             <div className="flex items-center justify-between mb-6">
               <div className="flex items-center gap-3">
                 <ClipboardList className="text-[#df9400]" />
