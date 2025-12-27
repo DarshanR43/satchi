@@ -2,6 +2,7 @@ from collections import defaultdict
 
 from django.db import transaction
 from django.db.models import Prefetch
+from django.db.models.deletion import ProtectedError
 from django.shortcuts import get_object_or_404
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated, IsAuthenticatedOrReadOnly
@@ -127,7 +128,20 @@ def delete_event(request, level: str, pk: int):
             )
         sub_event.delete()
     elif lvl in ("subsub", "sub_sub"):
-        get_object_or_404(SubSubEvent, pk=pk).delete()
+        subsub_event = get_object_or_404(SubSubEvent, pk=pk)
+        evaluations_qs = subsub_event.evaluations.all()
+        if evaluations_qs.exists():
+            evaluations_qs.delete()
+        projects_qs = subsub_event.project_set.all()
+        if projects_qs.exists():
+            projects_qs.delete()
+        try:
+            subsub_event.delete()
+        except ProtectedError as exc:
+            protected_objects = list(exc.protected_objects)
+            for dependent in protected_objects:
+                dependent.delete()
+            subsub_event.delete()
     else:
         return Response({"error": "Invalid level. Use main | sub | subsub."}, status=400)
     return Response(status=status.HTTP_204_NO_CONTENT)
