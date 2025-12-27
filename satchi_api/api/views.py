@@ -37,29 +37,38 @@ def submit_project(request, event_id):
         except SubSubEvent.DoesNotExist:
             return Response({"error": "Event not found."}, status=status.HTTP_404_NOT_FOUND)
 
+        cleaned_team_members = []
         totalEmails = []
-        totalEmails.append(team_captain_email.strip())
+        captain_email_clean = (team_captain_email or '').strip()
+        if not captain_email_clean:
+            return Response({"error": "Captain email is required."}, status=status.HTTP_400_BAD_REQUEST)
+
+        totalEmails.append(captain_email_clean)
         for member in team_members:
-            totalEmails.append(member.strip())
-        
-        if len(totalEmails) != len(set(totalEmails)):
+            member_email_clean = (member or '').strip()
+            if member_email_clean:
+                cleaned_team_members.append(member_email_clean)
+                totalEmails.append(member_email_clean)
+
+        normalizedEmails = [email.lower() for email in totalEmails]
+        if len(normalizedEmails) != len(set(normalizedEmails)):
             return Response({"error": "Duplicate email addresses found."}, status=status.HTTP_400_BAD_REQUEST)
 
         femaleCount = 0
-        for mails in totalEmails:
-            #if not User.objects.filter(email=mails).exists():
-            #    return Response({"error": f"Email {mails} is not registered with Gyan. Please Do create a Account"}, status=status.HTTP_400_BAD_REQUEST)
-            if TeamMember.objects.filter(email=mails).exists():
-                return Response({"error": f"Email {mails} is already registered in another project."}, status=status.HTTP_400_BAD_REQUEST)
-            if Project.objects.filter(captain_email=mails).exists():
-                return Response({"error": f"Email {mails} is already registered in another project."}, status=status.HTTP_400_BAD_REQUEST)
+        for email in totalEmails:
+            #if not User.objects.filter(email=email).exists():
+            #    return Response({"error": f"Email {email} is not registered with Gyan. Please Do create a Account"}, status=status.HTTP_400_BAD_REQUEST)
+            if TeamMember.objects.filter(email__iexact=email, project__event=event).exists():
+                return Response({"error": f"Email {email} is already registered in another project for this event."}, status=status.HTTP_400_BAD_REQUEST)
+            if Project.objects.filter(captain_email__iexact=email, event=event).exists():
+                return Response({"error": f"Email {email} is already registered in another project for this event."}, status=status.HTTP_400_BAD_REQUEST)
         """    
             try:
-                user = User.objects.get(email=mails)
+                user = User.objects.get(email=email)
                 if user.sex == 'female':
                     femaleCount += 1
             except User.DoesNotExist:
-                 return Response({"error": f"Email {mails} is not registered with Gyan. Please Do create a Account"}, status=status.HTTP_400_BAD_REQUEST)
+                 return Response({"error": f"Email {email} is not registered with Gyan. Please Do create a Account"}, status=status.HTTP_400_BAD_REQUEST)
 
         if minFemaleParticipants and femaleCount < minFemaleParticipants:
             return Response({"error": f"At least {minFemaleParticipants} female participants are required."}, status=status.HTTP_400_BAD_REQUEST)
@@ -72,16 +81,16 @@ def submit_project(request, event_id):
             team_name=team_name,
             project_topic=project_name,
             captain_name=team_captain,
-            captain_email=team_captain_email,
+            captain_email=captain_email_clean,
             captain_phone=team_captain_phone,
-            team_members=team_members,
+            team_members=cleaned_team_members,
             faculty_mentor_name=faculty_mentor_name,
         )
         project.save()
 
-        for mails in totalEmails:
+        for email in totalEmails:
             try:
-                user = User.objects.get(email=mails)
+                user = User.objects.get(email=email)
                 TeamMember.objects.create(
                     name=user.full_name,
                     email=user.email,
@@ -91,7 +100,7 @@ def submit_project(request, event_id):
             except User.DoesNotExist:
                 TeamMember.objects.create(
                     name="Unknown",
-                    email=mails,
+                    email=email,
                     phone="",
                     project=project
                 )
