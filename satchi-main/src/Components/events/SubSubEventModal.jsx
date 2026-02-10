@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X } from 'lucide-react';
+import { X, Trophy, ArrowRight, Bell, Info } from 'lucide-react';
 
 const SubSubEventModal = ({ subEvent, isOpen, onClose, onRegister }) => {
   if (!isOpen || !subEvent) return null;
@@ -11,70 +11,95 @@ const SubSubEventModal = ({ subEvent, isOpen, onClose, onRegister }) => {
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
-        className="fixed inset-0 bg-black/60 backdrop-blur-md flex items-center justify-center z-50 p-4"
+        className="fixed inset-0 bg-gray-900/60 backdrop-blur-sm flex items-center justify-center z-[100] p-4"
         onClick={onClose}
       >
         <motion.div
-          initial={{ scale: 0.95, y: 20 }}
-          animate={{ scale: 1, y: 0 }}
-          exit={{ scale: 0.95, y: 20 }}
-          transition={{ type: 'spring', stiffness: 300, damping: 25 }}
-          // CHANGED: Increased max-width from max-w-3xl to max-w-6xl for better visibility
-          className="bg-white w-full max-w-6xl mx-auto rounded-xl shadow-2xl border border-gray-200 overflow-hidden"
+          initial={{ scale: 0.98, opacity: 0, y: 10 }}
+          animate={{ scale: 1, opacity: 1, y: 0 }}
+          exit={{ scale: 0.98, opacity: 0, y: 10 }}
+          className="bg-white w-full max-w-5xl mx-auto rounded-3xl shadow-2xl overflow-hidden flex flex-col border border-white"
           onClick={(e) => e.stopPropagation()}
         >
-          <div className="flex items-center justify-between p-6 border-b border-gray-200 bg-gradient-to-r from-[#ff6a3c]/10 to-[#df9400]/10">
-            <h2 className="text-2xl font-bold bg-gradient-to-r from-[#ff6a3c] to-[#df9400] bg-clip-text text-transparent">
-              {subEvent.name}
-            </h2>
+          {/* Header - Unified with Admin Dashboard Theme */}
+          <div className="px-8 py-6 border-b border-gray-100 flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              <div className="hidden sm:flex p-2.5 bg-orange-50 rounded-xl text-[#ff6a3c]">
+                <Trophy size={20} />
+              </div>
+              <div>
+                <h2 className="text-xl md:text-2xl font-bold text-gray-800">
+                  {subEvent.name}
+                </h2>
+                <p className="text-xs text-gray-400 font-medium uppercase tracking-wider mt-0.5">
+                  Available Programs
+                </p>
+              </div>
+            </div>
             <button 
               onClick={onClose} 
-              className="p-2 hover:bg-gray-200/50 rounded-full transition-colors"
+              className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-full transition-all"
             >
-              <X size={28} className="text-gray-600" />
+              <X size={24} />
             </button>
           </div>
           
-          {/* CHANGED: Increased max-height from 65vh to 80vh */}
-          <div className="p-8 max-h-[80vh] overflow-y-auto">
-            <p className="text-gray-700 text-lg mb-8 leading-relaxed">
-              {subEvent.description}
-            </p>
-            
-            <h3 className="text-xl font-semibold text-[#df9400] border-b border-[#df9400]/30 pb-2 mb-6">
-              Competitions & Workshops
-            </h3>
-            
-            {subEvent.subSubEvents && subEvent.subSubEvents.length > 0 ? (
-              // CHANGED: Grid now allows 3 columns on medium screens (md:grid-cols-3)
-              <div className="grid gap-6 sm:grid-cols-2 md:grid-cols-3">
-                {subEvent.subSubEvents.map((ssEvent) => {
+          {/* Content Area */}
+          <div className="p-8 max-h-[75vh] overflow-y-auto">
+            {/* Description Section */}
+            <div className="flex gap-4 p-5 bg-amber-50/50 rounded-2xl border border-amber-100 mb-8">
+              <Info className="text-[#df9400] shrink-0" size={20} />
+              <p className="text-sm text-gray-700 leading-relaxed">
+                {subEvent.description || "Select from the list of workshops and competitions below to register for this event track."}
+              </p>
+            </div>
+
+            {/* List-Based Competition Layout */}
+            <div className="space-y-3">
+              {subEvent.subSubEvents && subEvent.subSubEvents.length > 0 ? (
+                subEvent.subSubEvents.map((ssEvent) => {
                   const isRegistrationOpen = subEvent.isOpen && ssEvent.isOpen;
                   return (
-                    <div 
-                      key={ssEvent.id} 
-                      className="bg-white border border-gray-200 p-5 rounded-lg shadow-sm hover:shadow-xl hover:border-orange-300 transition-all duration-300 flex flex-col justify-between h-full"
+                    <motion.div 
+                      key={ssEvent.id}
+                      whileHover={{ x: 4 }}
+                      className="group flex flex-col md:flex-row items-center justify-between p-5 rounded-2xl border border-gray-100 bg-white hover:border-orange-200 hover:shadow-md transition-all gap-4"
                     >
-                      <div>
-                        <h4 className="font-bold text-lg text-gray-800">{ssEvent.name}</h4>
-                        <p className="text-gray-600 mt-2 text-sm">{ssEvent.description}</p>
+                      <div className="flex-1">
+                        <h4 className="font-bold text-gray-800 group-hover:text-[#ff6a3c] transition-colors">
+                          {ssEvent.name}
+                        </h4>
+                        <p className="text-sm text-gray-500 mt-1 line-clamp-1">
+                          {ssEvent.description}
+                        </p>
                       </div>
-                      <button 
-                        onClick={() => onRegister(ssEvent)} 
-                        disabled={!isRegistrationOpen} 
-                        className="mt-5 w-full px-4 py-3 rounded-md text-sm font-semibold bg-gradient-to-r from-[#ff6a3c] to-[#df9400] text-white hover:shadow-lg hover:shadow-orange-500/30 transition-all disabled:bg-gray-300 disabled:cursor-not-allowed disabled:shadow-none"
-                      >
-                        {isRegistrationOpen ? 'Register Now' : 'Registration Closed'}
-                      </button>
-                    </div>
+
+                      <div className="flex items-center gap-4 w-full md:w-auto">
+                        <span className={`text-[10px] font-bold px-3 py-1 rounded-full ${isRegistrationOpen ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+                          {isRegistrationOpen ? 'OPEN' : 'CLOSED'}
+                        </span>
+                        <button 
+                          onClick={() => onRegister(ssEvent)} 
+                          disabled={!isRegistrationOpen} 
+                          className={`flex-1 md:flex-none px-6 py-2.5 rounded-xl text-sm font-bold flex items-center justify-center gap-2 transition-all ${
+                            isRegistrationOpen 
+                              ? 'bg-gray-900 text-white hover:bg-[#ff6a3c] shadow-sm' 
+                              : 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                          }`}
+                        >
+                          Register <ArrowRight size={16} />
+                        </button>
+                      </div>
+                    </motion.div>
                   );
-                })}
-              </div>
-            ) : (
-              <p className="text-gray-500 text-center py-8 text-lg">
-                No specific events announced yet. Stay tuned!
-              </p>
-            )}
+                })
+              ) : (
+                <div className="text-center py-12">
+                  <Bell className="mx-auto text-gray-300 mb-3" size={32} />
+                  <p className="text-gray-400">No events scheduled yet. Please check back later.</p>
+                </div>
+              )}
+            </div>
           </div>
         </motion.div>
       </motion.div>
