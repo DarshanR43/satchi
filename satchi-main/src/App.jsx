@@ -11,6 +11,7 @@ import Events from "./Pages/Events";
 import Admin from "./Pages/Admin";
 import EvaluationPage from "./Pages/Evaluation";
 import ProfilePage from "./Pages/Profile";
+import Statistics from "./Pages/Statistics";
 
 const App = () => {
   return (
@@ -23,7 +24,7 @@ const App = () => {
             <Route path="events" element={<Events />} />
             <Route path="admin" element={<Admin />} />
             <Route path="login" element={<Login />} />
-            <Route path="evaluate" element={<EvaluationPage/>}/>
+            <Route path="evaluate" element={<EvaluationPage />} />
             {/* --- UPDATED ROUTES --- */}
             {/* Route for generic registration */}
             <Route path="register" element={<Registration />} />
@@ -32,6 +33,7 @@ const App = () => {
 
             <Route path="signup" element={<Signup />} />
             <Route path="profile" element={<ProfilePage />} />
+            <Route path="statistics/:eventId" element={<Statistics />} />
           </Routes>
         </main>
         <Footer />

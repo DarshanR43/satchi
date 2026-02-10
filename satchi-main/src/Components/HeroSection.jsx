@@ -36,7 +36,7 @@ const HeroSection = () => {
           transition={{ duration: 1, delay: 0.4 }}
           className="mt-4 text-gray-600 text-base sm:text-lg leading-relaxed max-w-2xl mx-auto"
         >
-          Join us at the ultimate tech fair! Register now to explore groundbreaking innovations, connect with industry leaders, and secure your spot at this unmissable event.
+          An all-in-one digital ecosystem that streamlines technical festivals by integrating event management, participant registration, and real-time evaluation into a single, intuitive platform.
         </motion.p>
 
         <motion.div

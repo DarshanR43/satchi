@@ -50,9 +50,9 @@ const Footer = () => {
       <div className="relative z-10 max-w-7xl mx-auto px-6">
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-12 text-sm">
           <div>
-            <h4 className="text-lg font-semibold mb-4 text-[#df9400]">SATCHI Tech Fest</h4>
+            <h4 className="text-lg font-semibold mb-4 text-[#df9400]">GYAN</h4>
             <p className="text-gray-600 leading-relaxed">
-              A celebration of technical ingenuity and a glimpse into the future, envisioned by the brightest young minds.
+              Effortless tech fest management, from registration to results.
             </p>
           </div>
 

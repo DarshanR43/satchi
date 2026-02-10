@@ -87,7 +87,7 @@ const Header = () => {
         <a href="/">
           <img 
             src="/images/gyan_main_logo.png" 
-            alt="Satchi Logo" 
+            alt="GYAN Logo" 
             className="h-8" 
           />
         </a>

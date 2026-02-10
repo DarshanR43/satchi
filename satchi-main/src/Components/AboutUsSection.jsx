@@ -82,12 +82,12 @@ const AboutUsSection = () => {
                      viewport={{ once: true }}
                 >
                     <div className="bg-[radial-gradient(ellipse_at_center,var(--tw-gradient-stops))] from-[#fef5e4ff] rounded-2xl p-8 backdrop-blur-lg">
-                        <p className="text-lg leading-relaxed text-gray-600">
+                        {/* <p className="text-lg leading-relaxed text-gray-600">
                             The Anokha Tech Fair is a vibrant and highly anticipated exhibition, a core part of Anokha, the national-level technical festival of Amrita Vishwa Vidyapeetham, Coimbatore. It's a melting pot of innovation, creativity, and technological prowess.
                         </p>
-                        <br />
+                        <br /> */}
                         <p className="text-lg leading-relaxed text-gray-600">
-                           Embodying our commitment to hands-on learning, we inspire the next generation to "Dare to be Different." Anokha is more than an exhibition; it's a celebration of technical ingenuity and a glimpse into the future, envisioned by the brightest young minds.
+                           GYAN is a comprehensive event management and evaluation platform designed to streamline the organization of large-scale technical festivals and symposiums. Serving as a centralized digital hub, it seamlessly connects administrators, participants, and judges through a suite of intuitive, role-specific tools. For organizers, GYAN offers a robust Admin Dashboard to manage complex event hierarchies, control registration workflows, and oversee logistics with precision. Participants benefit from an interactive Fest Catalog where they can explore and register for competitions, workshops, and technical tracks. Additionally, the platform empowers judges with a dedicated Evaluation Console for efficient, real-time grading and feedback, supported by dynamic statistical visualizations and automated reporting to ensure a transparent and successful event experience.
                         </p>
                          {/* <motion.button
                             whileHover={{ scale: 1.05, boxShadow: "0px 0px 20px rgba(255, 106, 60, 0.4)" }}
