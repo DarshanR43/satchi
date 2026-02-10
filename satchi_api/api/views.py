@@ -6,6 +6,9 @@ from events.models import SubSubEvent
 from users.models import User
 from .models import Project, TeamMember
 from rest_framework.permissions import IsAuthenticated
+from eval.models import Evaluation
+from django.db.models import Avg, Max
+from django.shortcuts import get_object_or_404
 
 @api_view(['POST'])
 def submit_project(request, event_id):
@@ -155,3 +158,44 @@ def user_registrations(request):
         })
 
     return Response({"registrations": payload}, status=status.HTTP_200_OK)
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def get_event_statistics(request, event_id):
+    try:
+        # Check permissions - simplistic check, can be enhanced
+        if not request.user.role in ['SUPERADMIN', 'EVENTADMIN', 'SUBEVENTADMIN', 'SUBEVENTMANAGER', 'SUBSUBEVENTMANAGER']:
+            return Response({"error": "Unauthorized Access"}, status=status.HTTP_403_FORBIDDEN)
+
+        event = get_object_or_404(SubSubEvent, event_id=event_id)
+        
+        # Get all evaluations for this event
+        evaluations = Evaluation.objects.filter(subsubevent=event)
+        
+        if not evaluations.exists():
+            return Response({
+                "eventName": event.name,
+                "totalParticipants": 0,
+                "averageMark": 0,
+                "highestMark": 0,
+                "marks": []
+            }, status=status.HTTP_200_OK)
+
+        # Calculate statistics
+        total_participants = evaluations.count()
+        avg_mark = evaluations.aggregate(Avg('final_score'))['final_score__avg'] or 0
+        max_mark = evaluations.aggregate(Max('final_score'))['final_score__max'] or 0
+        
+        # Get all marks for distribution
+        marks = list(evaluations.values_list('final_score', flat=True))
+        
+        return Response({
+            "eventName": event.name,
+            "totalParticipants": total_participants,
+            "averageMark": round(avg_mark, 2),
+            "highestMark": max_mark,
+            "marks": marks
+        }, status=status.HTTP_200_OK)
+
+    except Exception as e:
+        return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

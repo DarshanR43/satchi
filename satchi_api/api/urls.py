@@ -1,7 +1,8 @@
 from django.urls import path
-from .views import submit_project, user_registrations
+from . import views
 
 urlpatterns = [
-    path('submit-project/<str:event_id>/', submit_project),
-    path('my-registrations/', user_registrations),
+    path('submit-project/<str:event_id>/', views.submit_project),
+    path('my-registrations/', views.user_registrations),
+    path('statistics/<str:event_id>/', views.get_event_statistics),
 ]
