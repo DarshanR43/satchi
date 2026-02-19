@@ -3,3 +3,8 @@ djangorestframework
 django-cors-headers
 psycopg2-binary
 django-cockroachdb
+gunicorn
+dj-database-url
+python-dotenv
+psycopg2-binary
+whitenoise
