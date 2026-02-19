@@ -18,8 +18,8 @@ services:
 
   backend:
     build:
-      context: .
-      dockerfile: ./satchi_api/Dockerfile
+      context: ./satchi_api
+      dockerfile: Dockerfile
     command: python manage.py runserver 0.0.0.0:8000
     volumes:
       - ./satchi_api:/app

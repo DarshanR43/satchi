@@ -12,8 +12,8 @@ services:
 
   backend:
     build:
-      context: .
-      dockerfile: ./satchi_api/Dockerfile
+      context: ./satchi_api
+      dockerfile: Dockerfile
     command: gunicorn backend.wsgi:application --bind 0.0.0.0:8000
     volumes:
       - ./satchi_api:/app
