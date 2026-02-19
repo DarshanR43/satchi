@@ -7,8 +7,11 @@ import { Loader } from 'lucide-react';
 
 <<<<<<< Updated upstream
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
 import EventSidebar from '../Components/events/EventCards';
 import EventContent from '../Components/events/StatusPill'; // Imported as StatusPill in your original code
+=======
+>>>>>>> Stashed changes
 =======
 >>>>>>> Stashed changes
 =======
