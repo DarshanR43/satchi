@@ -5,10 +5,9 @@ import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
 import { Loader } from 'lucide-react';
 
-<<<<<<< Updated upstream
-=======
+
 import SubSubEventModal from '../Components/events/SubSubEventModal';
->>>>>>> Stashed changes
+
 
 
 import EventSidebar from '../Components/events/EventCards';
