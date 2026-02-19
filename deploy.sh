@@ -24,5 +24,5 @@ docker compose exec backend python manage.py migrate
 # docker compose exec backend python manage.py createsuperuser
 
 echo "Deployment Complete!"
-echo "Frontend: http://localhost:8080 (or server IP:8080)"
+echo "Frontend: http://localhost (or server IP)"
 echo "Backend: http://localhost:8000 (or server IP:8000)"
