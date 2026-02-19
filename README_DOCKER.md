@@ -105,7 +105,7 @@ chmod +x deploy.sh
 ```
 
 ### 3. Verification
-Access the application at `http://your-server-ip`.
+Access the application at `http://your-server-ip:8080`.
 
 ## Troubleshooting
 
