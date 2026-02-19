@@ -165,7 +165,7 @@
 """
 Django settings for backend project.
 """
-
+import os
 from pathlib import Path
 import environ
 
