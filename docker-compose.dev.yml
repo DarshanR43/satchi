@@ -1,0 +1,55 @@
+version: '3.8'
+
+services:
+  db:
+    image: postgres:13
+    restart: always
+    environment:
+      - POSTGRES_DB=satchi
+      - POSTGRES_USER=satchi
+      - POSTGRES_PASSWORD=satchipass
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U satchi" ]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build:
+      context: .
+      dockerfile: ./satchi_api/Dockerfile
+    command: python manage.py runserver 0.0.0.0:8000
+    volumes:
+      - ./satchi_api:/app
+    ports:
+      - "8000:8000"
+    environment:
+      - DJANGO_DEBUG=True
+      - DJANGO_SECRET_KEY=dev_secret_key
+      - DJANGO_ALLOWED_HOSTS=localhost,127.0.0.1,backend
+      - DJANGO_CORS_ALLOWED_ORIGINS=http://localhost:5173,http://localhost,http://127.0.0.1
+      - DATABASE_URL=postgres://satchi:satchipass@db:5432/satchi
+    depends_on:
+      db:
+        condition: service_healthy
+
+  frontend:
+    build:
+      context: ./satchi-main
+      dockerfile: Dockerfile
+      target: build # Only build the node stage, but override command
+    command: npm run dev -- --host
+    volumes:
+      - ./satchi-main:/app
+      - /app/node_modules
+    ports:
+      - "5173:5173"
+    environment:
+      - VITE_API_URL=http://localhost:8000
+    depends_on:
+      - backend
+
+volumes:
+  postgres_data:

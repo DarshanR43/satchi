@@ -305,6 +305,7 @@ STATIC_ROOT = BASE_DIR / 'staticfiles'
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
+<<<<<<< Updated upstream
 # --------------------------------------------------
 # CORS / CSRF
 # --------------------------------------------------
@@ -312,6 +313,9 @@ CORS_ALLOWED_ORIGINS = env.list(
     "DJANGO_CORS_ALLOWED_ORIGINS",
     default=["http://localhost:5173"]
 )
+=======
+CORS_ALLOWED_ORIGINS = os.environ.get('DJANGO_CORS_ALLOWED_ORIGINS', 'http://localhost:5173,http://localhost,http://127.0.0.1').split(',')
+>>>>>>> Stashed changes
 
 CORS_ALLOW_CREDENTIALS = env.bool(
     "DJANGO_CORS_ALLOW_CREDENTIALS",

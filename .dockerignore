@@ -1,0 +1,11 @@
+.git
+.gitignore
+satchi-main
+nginx
+README_DOCKER.md
+docker-compose.yml
+**/.DS_Store
+**/*.pyc
+**/*.pyo
+**/__pycache__
+db.sqlite3
