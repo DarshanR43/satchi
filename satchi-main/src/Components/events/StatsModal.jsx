@@ -3,10 +3,9 @@ import axios from 'axios';
 import { Pie, Bar } from 'react-chartjs-2';
 import { Chart as ChartJS, ArcElement, Tooltip, Legend, CategoryScale, LinearScale, BarElement } from 'chart.js';
 import { X } from 'lucide-react';
+import { API_URL } from '../../lib/api';
 
 ChartJS.register(ArcElement, Tooltip, Legend, CategoryScale, LinearScale, BarElement);
-
-const API_URL = import.meta.env.VITE_API_URL || '/api';
 
 const StatsModal = ({ isOpen, onClose, event, api }) => {
   const [loading, setLoading] = useState(false);

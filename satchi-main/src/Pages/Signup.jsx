@@ -2,8 +2,7 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { User, Mail, Phone, Hash, School, Briefcase, Calendar, ChevronDown, UserCheck, CheckCircle, GraduationCap, BookOpenCheck, Lock, Eye, EyeOff, WandSparkles } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-
-const API_URL = import.meta.env.VITE_API_URL || '/api';
+import { API_URL } from '../lib/api';
 
 const InputField = ({ name, type = 'text', placeholder, icon, error, value, onChange, className = '' }) => (
     <div className={`relative ${className}`}>

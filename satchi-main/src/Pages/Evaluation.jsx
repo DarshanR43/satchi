@@ -10,8 +10,7 @@ import {
 import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
 import { Navigate, useNavigate } from 'react-router-dom';
-
-const API_URL = import.meta.env.VITE_API_URL || '/api';
+import { API_URL } from '../lib/api';
 
 // --- Reused Searchable Dropdown (Glassmorphism Style) ---
 const SearchableDropdown = ({ label, value, onChange, options, loading, disabled, valueKey = 'id', nameKey = 'name' }) => {

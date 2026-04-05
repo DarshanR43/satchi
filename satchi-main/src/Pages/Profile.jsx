@@ -4,8 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import { Navigate } from 'react-router-dom';
 import { User, Mail, Phone, School, GraduationCap, BookOpen, Hash, Briefcase, Calendar, UserCheck, Layers, Users, CalendarRange } from 'lucide-react';
 import axios from 'axios';
-
-const API_URL = import.meta.env.VITE_API_URL || '/api';
+import { API_URL } from '../lib/api';
 
 const ProfileDetail = ({ icon, label, value }) => {
     if (!value) return null;

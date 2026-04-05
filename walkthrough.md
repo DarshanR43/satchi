@@ -78,11 +78,12 @@ Update at least these values in `.env.prod`:
 For this deployment, `VITE_API_URL` should stay:
 
 ```bash
-VITE_API_URL=https://gyan.cb.amrita.edu/api
+VITE_API_URL=https://gyan.cb.amrita.edu
 ```
 
 The frontend container is expected to listen only on `127.0.0.1:8080`.
 Host `nginx` should own public ports `80/443` and reverse proxy the domain to the container.
+The container Nginx then forwards `/api/`, `/user/`, `/events/`, `/eval/`, and `/admin/` to Django.
 
 ## 4. First deployment
 

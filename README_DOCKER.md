@@ -14,5 +14,5 @@ Key production notes:
 
 - PostgreSQL is the only supported production database.
 - `.env.prod` must stay uncommitted.
-- The frontend is served through Nginx and proxies API traffic through `/api/`.
+- The frontend is served through Nginx and proxies backend traffic for `/api/`, `/user/`, `/events/`, `/eval/`, and `/admin/`.
 - A SQL backup is taken before each deployment by `deploy.sh`.

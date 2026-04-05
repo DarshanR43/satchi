@@ -4,8 +4,7 @@ import axios from 'axios';
 import { motion } from 'framer-motion';
 import { Loader, AlertTriangle, BookOpen, User, Mail, Phone, Users, UserPlus, UserMinus, FileText, Briefcase } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
-
-const API_URL = import.meta.env.VITE_API_URL || '/api';
+import { API_URL } from '../lib/api';
 
 function getCookie(name) {
   let cookieValue = null;

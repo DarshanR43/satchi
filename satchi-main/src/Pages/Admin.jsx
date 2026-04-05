@@ -4,8 +4,7 @@ import { Plus, ChevronDown, Trash2, X, Users, Power, CheckSquare, Square, AlertT
 import { useAuth } from '../context/AuthContext';
 import { Navigate, useNavigate } from 'react-router-dom';
 import axios from 'axios';
-
-const API_URL = import.meta.env.VITE_API_URL || '/api';
+import { API_URL } from '../lib/api';
 
 /* --- Components --- */
 

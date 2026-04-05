@@ -16,8 +16,7 @@ import { Users, Target, TrendingUp, BarChart3, AlertCircle, ArrowLeft } from "lu
 import { useParams, useNavigate } from "react-router-dom";
 import axios from "axios";
 import { useAuth } from "../context/AuthContext";
-
-const API_URL = import.meta.env.VITE_API_URL || '/api';
+import { API_URL } from "../lib/api";
 
 export default function Statistics() {
     const { eventId } = useParams();
