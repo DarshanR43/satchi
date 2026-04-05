@@ -15,7 +15,7 @@ import {
   Users
 } from 'lucide-react';
 
-import SubSubEventModal from '../components/events/SubSubEventModal';
+import SubSubEventModal from '../Components/events/SubSubEventModal';
 
 const API_URL = import.meta.env.VITE_API_URL || '/api';
 
