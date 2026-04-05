@@ -306,6 +306,7 @@ STATIC_ROOT = BASE_DIR / 'staticfiles'
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 
+<<<<<<< Updated upstream
 CORS_ALLOWED_ORIGINS = os.environ.get('DJANGO_CORS_ALLOWED_ORIGINS', 'http://localhost:5173,http://localhost,http://127.0.0.1').split(',')
 
 
@@ -340,3 +341,15 @@ SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 # SECURE_HSTS_SECONDS = 31536000
 # SECURE_HSTS_INCLUDE_SUBDOMAINS = True
 # SECURE_HSTS_PRELOAD = True
+=======
+AUTH_USER_MODEL = 'users.User'  # Replace 'yourapp' with your actual app name
+
+EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+EMAIL_HOST = 'smtp.gmail.com'   # Gmail example
+EMAIL_PORT = 587
+EMAIL_USE_TLS = True
+
+EMAIL_HOST_USER = 'satchiamritacbe@gmail.com'        # Sender email
+EMAIL_HOST_PASSWORD = 'rsri ssnu rcaf qfpp'      # Gmail app password (not real password!)
+DEFAULT_FROM_EMAIL = EMAIL_HOST_USER
+>>>>>>> Stashed changes

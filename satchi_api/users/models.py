@@ -2,6 +2,7 @@ from django.contrib.auth.models import AbstractUser
 from django.db import models
 from django.contrib.auth.models import AbstractUser
 from django.db import models
+import uuid
 from events.models import MainEvent, SubEvent, SubSubEvent
 
 class User(AbstractUser):
@@ -32,7 +33,10 @@ class User(AbstractUser):
     course = models.CharField(max_length=100, blank=True, null=True)
     sex = models.CharField(max_length=10, blank=True, null=True)
     current_year = models.CharField(max_length=10, blank=True, null=True)
-
+    # Verification fields
+    is_verified = models.BooleanField(default=False)
+    email_verification_token = models.UUIDField(default=uuid.uuid4, null=True, blank=True)
+   
     # Faculty-specific fields
     position = models.CharField(max_length=100, blank=True, null=True)
 

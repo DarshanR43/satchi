@@ -7,7 +7,9 @@ from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.authtoken.models import Token
 from django.contrib.auth import get_user_model
 from .decorators import event_role_required
-
+from django.core.mail import send_mail
+from django.conf import settings
+from django.shortcuts import get_object_or_404
 User = get_user_model()
 
 @api_view(['POST'])
@@ -42,6 +44,9 @@ def signup_view(request):
 
         # All users default to PARTICIPANT role
         user = User(
+            #new fields 
+            is_verified=False,
+            email_verification_token=uuid.uuid4(),
             email=email,
             username=email,  # Required for AbstractUser
             full_name=full_name,
@@ -58,6 +63,15 @@ def signup_view(request):
 
         user.set_password(password)
         user.save()
+# Send verification email
+        verification_link = f"{settings.FRONTEND_URL}/verify-email/{user.email_verification_token}/"
+        send_mail(
+            "Verify your email",
+            f"Click the link to verify your email: {verification_link}",
+            settings.DEFAULT_FROM_EMAIL,
+            [user.email],
+            fail_silently=False,
+        )
 
         return Response({"message": "User created successfully"}, status=status.HTTP_201_CREATED)
 
@@ -71,6 +85,9 @@ def login_view(request):
     user = authenticate(username=email, password=password)
 
     if user:
+        # Check if email is verified
+        if not user.is_verified:
+            return Response({"error": "Email not verified. Please check your inbox."}, status=status.HTTP_403_FORBIDDEN)
         token, created = Token.objects.get_or_create(user=user)
         return Response({
             "token": token.key,
@@ -121,3 +138,13 @@ def get_user_details(request):
                 "position": user.position
         }
         return Response({"user": user_data}, status=status.HTTP_200_OK)
+@api_view(['GET'])
+@permission_classes([AllowAny])
+def verify_email(request, token):
+    user = get_object_or_404(User, email_verification_token=token)
+    if user.is_verified:
+        return Response({"message": "Email already verified."})
+    user.is_verified = True
+    user.email_verification_token = None
+    user.save()
+    return Response({"message": "Email verified successfully."})
