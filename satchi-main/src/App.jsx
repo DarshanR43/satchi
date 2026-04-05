@@ -12,6 +12,7 @@ import Admin from "./Pages/Admin";
 import EvaluationPage from "./Pages/Evaluation";
 import ProfilePage from "./Pages/Profile";
 import Statistics from "./Pages/Statistics";
+import UserManagementPage from "./Pages/UserManagement";
 
 const App = () => {
   return (
@@ -23,6 +24,7 @@ const App = () => {
             <Route path="/" element={<Home />} />
             <Route path="events" element={<Events />} />
             <Route path="admin" element={<Admin />} />
+            <Route path="admin/users" element={<UserManagementPage />} />
             <Route path="login" element={<Login />} />
             <Route path="evaluate" element={<EvaluationPage />} />
             {/* --- UPDATED ROUTES --- */}
