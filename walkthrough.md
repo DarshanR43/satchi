@@ -123,6 +123,13 @@ Check the backend health endpoint:
 curl http://127.0.0.1/api/health/
 ```
 
+If `DJANGO_SECURE_SSL_REDIRECT=True`, a plain HTTP request may return `301 Moved Permanently` to HTTPS.
+To verify the app behind the proxy without changing production settings, test with:
+
+```bash
+curl -i -H "Host: gyan.cb.amrita.edu" -H "X-Forwarded-Proto: https" http://127.0.0.1/api/health/
+```
+
 Check logs if anything looks wrong:
 
 ```bash
