@@ -99,6 +99,16 @@ What the script does:
 7. Starts the backend and frontend containers.
 8. Verifies the backend through `http://127.0.0.1/api/health/`.
 
+If the deploy fails with `failed to bind host port 0.0.0.0:80`, another service is already using port `80` on the server.
+Check with:
+
+```bash
+sudo ss -ltnp '( sport = :80 )'
+docker ps --format 'table {{.Names}}\t{{.Ports}}'
+```
+
+If you intend this stack to serve the public site directly, stop the conflicting service and rerun the deploy.
+
 ## 5. Verify the deployment
 
 Check container status:
@@ -170,6 +180,16 @@ python satchi_api/manage.py migrate
 5. If a migration is large or destructive, test it on a copy of the production backup first.
 6. Keep at least one off-server copy of the latest SQL dump.
 7. Do not change `POSTGRES_DB`, `POSTGRES_USER`, or `POSTGRES_PASSWORD` on a live PostgreSQL volume unless you intentionally plan the credential rotation.
+
+If deploy fails with `password authentication failed for user "satchi"`, the PostgreSQL volume was already initialized with a different password than the one currently in `.env.prod`.
+For a disposable first-time setup, reset the volume and redeploy:
+
+```bash
+docker compose --env-file .env.prod down -v
+./deploy.sh
+```
+
+If you need to keep the existing database, keep `.env.prod` aligned with the original password or rotate the password inside PostgreSQL before redeploying.
 
 ## 9. Manual backup and restore
 
