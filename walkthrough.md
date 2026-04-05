@@ -69,6 +69,8 @@ Update at least these values in `.env.prod`:
 - `DJANGO_SECRET_KEY`: paste the output of the first command
 - `POSTGRES_PASSWORD`: paste the output of the second command
 - `DATABASE_URL`: use the same password in `postgres://satchi:YOUR_PASSWORD@db:5432/satchi`
+- `FRONTEND_HOST_BIND`: keep `127.0.0.1`
+- `FRONTEND_HOST_PORT`: keep `8080`
 - `VITE_API_URL`
 
 `db` is the Docker Compose service name from `docker-compose.yml`, so keep that hostname as-is in `DATABASE_URL`.
@@ -78,6 +80,9 @@ For this deployment, `VITE_API_URL` should stay:
 ```bash
 VITE_API_URL=https://gyan.cb.amrita.edu/api
 ```
+
+The frontend container is expected to listen only on `127.0.0.1:8080`.
+Host `nginx` should own public ports `80/443` and reverse proxy the domain to the container.
 
 ## 4. First deployment
 
@@ -97,17 +102,15 @@ What the script does:
 5. Applies migrations.
 6. Collects static files.
 7. Starts the backend and frontend containers.
-8. Verifies the backend through `http://127.0.0.1/api/health/`.
+8. Verifies the backend through `http://127.0.0.1:8080/api/health/`.
 
-If the deploy fails with `failed to bind host port 0.0.0.0:80`, another service is already using port `80` on the server.
-Check with:
+If host `nginx` is serving `https://gyan.cb.amrita.edu`, keep Docker frontend bound to `127.0.0.1:8080` and let host `nginx` own ports `80/443`.
+Check the active listeners with:
 
 ```bash
-sudo ss -ltnp '( sport = :80 )'
+sudo ss -ltnp '( sport = :80 or sport = :443 or sport = :8080 )'
 docker ps --format 'table {{.Names}}\t{{.Ports}}'
 ```
-
-If you intend this stack to serve the public site directly, stop the conflicting service and rerun the deploy.
 
 ## 5. Verify the deployment
 
@@ -120,14 +123,14 @@ docker compose --env-file .env.prod ps
 Check the backend health endpoint:
 
 ```bash
-curl http://127.0.0.1/api/health/
+curl http://127.0.0.1:8080/api/health/
 ```
 
 If `DJANGO_SECURE_SSL_REDIRECT=True`, a plain HTTP request may return `301 Moved Permanently` to HTTPS.
 To verify the app behind the proxy without changing production settings, test with:
 
 ```bash
-curl -i -H "Host: gyan.cb.amrita.edu" -H "X-Forwarded-Proto: https" http://127.0.0.1/api/health/
+curl -i -H "Host: gyan.cb.amrita.edu" -H "X-Forwarded-Proto: https" http://127.0.0.1:8080/api/health/
 ```
 
 Check logs if anything looks wrong:

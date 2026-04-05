@@ -18,6 +18,9 @@ set -a
 source "$ENV_FILE"
 set +a
 
+FRONTEND_HOST_BIND="${FRONTEND_HOST_BIND:-127.0.0.1}"
+FRONTEND_HOST_PORT="${FRONTEND_HOST_PORT:-8080}"
+
 required_vars=(
   DJANGO_SECRET_KEY
   DJANGO_ALLOWED_HOSTS
@@ -52,13 +55,15 @@ compose() {
 }
 
 check_health() {
+  local health_url="http://${FRONTEND_HOST_BIND}:${FRONTEND_HOST_PORT}/api/health/"
+
   if command -v curl >/dev/null 2>&1; then
-    curl -fsS http://127.0.0.1/api/health/ >/dev/null
+    curl -fsS "$health_url" >/dev/null
     return
   fi
 
   if command -v wget >/dev/null 2>&1; then
-    wget -qO- http://127.0.0.1/api/health/ >/dev/null
+    wget -qO- "$health_url" >/dev/null
     return
   fi
 
@@ -117,5 +122,5 @@ fi
 
 echo
 echo "Deployment completed successfully."
-echo "Local health endpoint: http://127.0.0.1/api/health/"
+echo "Local health endpoint: http://${FRONTEND_HOST_BIND}:${FRONTEND_HOST_PORT}/api/health/"
 echo "Public site: https://gyan.cb.amrita.edu/"
