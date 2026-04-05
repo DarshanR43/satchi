@@ -52,18 +52,26 @@ cp .env.prod.example .env.prod
 nano .env.prod
 ```
 
-Generate a strong Django secret key with:
+Generate a strong app secret without needing Django installed yet:
 
 ```bash
-python3 -c "from django.core.management.utils import get_random_secret_key; print(get_random_secret_key())"
+python3 -c "import secrets; print(secrets.token_urlsafe(50))"
+```
+
+Generate a strong database password using URL-safe characters:
+
+```bash
+python3 -c "import secrets, string; chars = string.ascii_letters + string.digits; print(''.join(secrets.choice(chars) for _ in range(32)))"
 ```
 
 Update at least these values in `.env.prod`:
 
-- `DJANGO_SECRET_KEY`
-- `POSTGRES_PASSWORD`
-- `DATABASE_URL`
+- `DJANGO_SECRET_KEY`: paste the output of the first command
+- `POSTGRES_PASSWORD`: paste the output of the second command
+- `DATABASE_URL`: use the same password in `postgres://satchi:YOUR_PASSWORD@db:5432/satchi`
 - `VITE_API_URL`
+
+`db` is the Docker Compose service name from `docker-compose.yml`, so keep that hostname as-is in `DATABASE_URL`.
 
 For this deployment, `VITE_API_URL` should stay:
 
