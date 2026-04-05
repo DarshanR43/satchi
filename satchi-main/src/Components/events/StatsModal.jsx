@@ -6,7 +6,7 @@ import { X } from 'lucide-react';
 
 ChartJS.register(ArcElement, Tooltip, Legend, CategoryScale, LinearScale, BarElement);
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000';
+const API_URL = import.meta.env.VITE_API_URL || '/api';
 
 const StatsModal = ({ isOpen, onClose, event, api }) => {
   const [loading, setLoading] = useState(false);
