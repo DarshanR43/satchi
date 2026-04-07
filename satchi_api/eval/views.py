@@ -90,6 +90,7 @@ def getProjectsByEvent(request, event_id):
 
     projects = (
         Project.objects.filter(event=subsubevent)
+        .prefetch_related("members")
         .annotate(
             has_evaluation=Exists(
                 Evaluation.objects.filter(
@@ -272,6 +273,8 @@ def download_evaluation_summary(request, subsubevent_id):
         "Project ID",
         "Team Name",
         "Project Topic",
+        "TRL Level",
+        "SDGs",
         "Captain Name",
         "Captain Email",
         "Captain Phone",
@@ -306,13 +309,24 @@ def download_evaluation_summary(request, subsubevent_id):
                 entry = f"{entry} <{member.email}>".strip()
             member_entries.append(entry)
         if not member_entries and isinstance(project.team_members, list):
-            member_entries = [str(value) for value in project.team_members]
+            for raw_member in project.team_members:
+                if isinstance(raw_member, dict):
+                    entry = raw_member.get("name") or ""
+                    if raw_member.get("email"):
+                        entry = f"{entry} <{raw_member['email']}>".strip()
+                    if raw_member.get("phone"):
+                        entry = f"{entry} ({raw_member['phone']})".strip()
+                    member_entries.append(entry)
+                else:
+                    member_entries.append(str(raw_member))
 
         row = [
             subsubevent.name,
             project.id,
             project.team_name,
             project.project_topic,
+            f"TRL {project.trl_level}" if project.trl_level else "",
+            ", ".join(f"SDG {sdg}" for sdg in (project.sdgs or [])),
             project.captain_name,
             project.captain_email,
             project.captain_phone,

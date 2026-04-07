@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Plus, ChevronDown, Trash2, X, Users, Power, CheckSquare, Square, AlertTriangle, ClipboardList, Edit3, Download, Menu, BarChart } from 'lucide-react';
+import { Plus, ChevronDown, Trash2, X, Users, Power, CheckSquare, Square, AlertTriangle, ClipboardList, Edit3, Download, Menu, BarChart, UserPlus } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { Link, Navigate, useNavigate } from 'react-router-dom';
 import axios from 'axios';
@@ -343,6 +343,11 @@ const EventAccordionCard = ({ event, user, onToggleStatus, onOpenRolesModal, onO
     return ['SUPERADMIN', 'EVENTADMIN', 'SUBEVENTADMIN', 'SUBEVENTMANAGER', 'SUBSUBEVENTMANAGER'].includes(ssRole);
   };
 
+  const canManuallyRegisterTeam = (subEvent, subSubEvent) => {
+    const ssRole = normalizeRole(subSubEvent.role || subEvent.role || event.role);
+    return ['SUPERADMIN', 'EVENTADMIN', 'EVENTMANAGER', 'SUBEVENTADMIN', 'SUBEVENTMANAGER', 'SUBSUBEVENTMANAGER'].includes(ssRole);
+  };
+
   return (
     <motion.div layout className="bg-white/80 backdrop-blur-lg border border-gray-200/90 rounded-2xl shadow-xl overflow-hidden w-full">
       <motion.div layout className="flex flex-col sm:flex-row justify-between items-start sm:items-center p-4 cursor-pointer hover:bg-gray-50/50 transition-colors gap-3" onClick={onExpand}>
@@ -406,11 +411,13 @@ const EventAccordionCard = ({ event, user, onToggleStatus, onOpenRolesModal, onO
                     )}
                     {subEvent.subSubEvents.map((ssEvent) => {
                       const canToggleSubSub = canToggleSubSubEvent(subEvent, ssEvent);
+                      const canAddTeam = canManuallyRegisterTeam(subEvent, ssEvent);
                       const isDownloading = downloadingId === ssEvent.id;
                       return (
                         <div key={ssEvent.id} className="flex flex-col sm:flex-row justify-between items-start sm:items-center pt-2 border-t border-dashed border-gray-200 gap-2">
                           <p className="text-sm text-gray-600 flex items-center gap-2 truncate w-full sm:w-auto"><StatusPill isOpen={ssEvent.isOpen} /> <span className="truncate">{ssEvent.name}</span></p>
                           <div className="flex items-center gap-1 self-end sm:self-auto overflow-x-auto max-w-full">
+                            <ActionButton onClick={() => navigate(`/admin/events/${ssEvent.id}/manual-entry`)} icon={UserPlus} colorClass="green" title="Add Team" disabled={!canAddTeam} />
                             {onDownloadRegistrations && <ActionButton onClick={() => onDownloadRegistrations(ssEvent)} icon={Download} colorClass="blue" title={isDownloading ? 'Downloading...' : 'Download'} disabled={isDownloading} />}
                             <ActionButton onClick={() => navigate(`/statistics/${ssEvent.eventId}`)} icon={BarChart} colorClass="blue" title="Statistics" />
                             <ActionButton onClick={() => onOpenJudgesModal(ssEvent)} icon={ClipboardList} colorClass="blue" title="Judges" />
