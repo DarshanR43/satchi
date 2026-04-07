@@ -418,6 +418,7 @@ const EventAccordionCard = ({ event, user, onToggleStatus, onOpenRolesModal, onO
                           <p className="text-sm text-gray-600 flex items-center gap-2 truncate w-full sm:w-auto"><StatusPill isOpen={ssEvent.isOpen} /> <span className="truncate">{ssEvent.name}</span></p>
                           <div className="flex items-center gap-1 self-end sm:self-auto overflow-x-auto max-w-full">
                             <ActionButton onClick={() => navigate(`/admin/events/${ssEvent.id}/manual-entry`)} icon={UserPlus} colorClass="green" title="Add Team" disabled={!canAddTeam} />
+                            <ActionButton onClick={() => navigate(`/admin/events/${ssEvent.id}/teams`)} icon={Menu} colorClass="blue" title="Teams" disabled={!canAddTeam} />
                             {onDownloadRegistrations && <ActionButton onClick={() => onDownloadRegistrations(ssEvent)} icon={Download} colorClass="blue" title={isDownloading ? 'Downloading...' : 'Download'} disabled={isDownloading} />}
                             <ActionButton onClick={() => navigate(`/statistics/${ssEvent.eventId}`)} icon={BarChart} colorClass="blue" title="Statistics" />
                             <ActionButton onClick={() => onOpenJudgesModal(ssEvent)} icon={ClipboardList} colorClass="blue" title="Judges" />

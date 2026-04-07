@@ -14,6 +14,7 @@ from users.models import EventUserMapping, User
 
 from .models import Project, TeamMember
 from .serializers import ProjectSerializer
+from .services import sync_project_participants
 
 MANAGE_ROLES = {
     User.Role.SUPERADMIN,
@@ -254,42 +255,52 @@ def _statistics_project_payload(project, evaluation_map):
     }
 
 
-@api_view(['POST'])
-@permission_classes([IsAuthenticated])
-@transaction.atomic
-def submit_project(request, event_id):
-    data = request.data
-    event = get_object_or_404(SubSubEvent, event_id=event_id)
+def _serialize_event_summary(event):
+    return {
+        "id": event.id,
+        "eventId": event.event_id,
+        "name": event.name,
+        "description": event.description,
+        "rules": event.rules,
+        "minTeamSize": event.minTeamSize,
+        "maxTeamSize": event.maxTeamSize,
+        "minFemaleParticipants": event.minFemaleParticipants,
+        "isFacultyMentorRequired": event.isFacultyMentorRequired,
+    }
 
-    team_name = (data.get('team_name') or '').strip()
-    project_topic = (data.get('project_topic') or '').strip()
-    captain_name = (data.get('captain_name') or '').strip()
-    captain_email = _normalize_email(data.get('captain_email'))
-    captain_phone = _normalize_phone(data.get('captain_phone'))
-    faculty_mentor_name = (data.get('faculty_mentor_name') or '').strip() or None
 
-    try:
-        team_members = _normalize_member_entries(data.get('team_members', []))
-        trl_level = _normalize_trl_level(data.get('trl_level'))
-        sdgs = _normalize_sdgs(data.get('sdgs', []))
-    except ValueError as exc:
-        return Response({"error": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+def _parse_project_submission_data(data):
+    payload = {
+        "team_name": (data.get('team_name') or '').strip(),
+        "project_topic": (data.get('project_topic') or '').strip(),
+        "captain_name": (data.get('captain_name') or '').strip(),
+        "captain_email": _normalize_email(data.get('captain_email')),
+        "captain_phone": _normalize_phone(data.get('captain_phone')),
+        "faculty_mentor_name": (data.get('faculty_mentor_name') or '').strip() or None,
+    }
 
-    if not team_name or not project_topic or not captain_name or not captain_email or not captain_phone:
-        return Response({"error": "Missing required fields."}, status=status.HTTP_400_BAD_REQUEST)
+    payload["team_members"] = _normalize_member_entries(data.get('team_members', []))
+    payload["trl_level"] = _normalize_trl_level(data.get('trl_level'))
+    payload["sdgs"] = _normalize_sdgs(data.get('sdgs', []))
 
-    if not sdgs:
-        return Response({"error": "Select at least one SDG for the project."}, status=status.HTTP_400_BAD_REQUEST)
+    if not payload["team_name"] or not payload["project_topic"] or not payload["captain_name"] or not payload["captain_email"] or not payload["captain_phone"]:
+        raise ValueError("Missing required fields.")
 
-    is_manual_entry = _user_can_manage_event(request.user, event)
-    requester_email = _normalize_email(request.user.email)
-    if not is_manual_entry and captain_email != requester_email:
+    if not payload["sdgs"]:
+        raise ValueError("Select at least one SDG for the project.")
+
+    return payload
+
+
+def _validate_project_submission_constraints(event, payload, requester, is_manual_entry=False, current_project=None):
+    requester_email = _normalize_email(getattr(requester, "email", None))
+    if not is_manual_entry and payload["captain_email"] != requester_email:
         return Response(
             {"error": "You can only register a team where you are the captain."},
             status=status.HTTP_403_FORBIDDEN,
         )
 
-    team_size = len(team_members) + 1
+    team_size = len(payload["team_members"]) + 1
     if team_size < event.minTeamSize:
         return Response(
             {"error": f"Team size is less than the minimum required size of {event.minTeamSize}."},
@@ -301,44 +312,93 @@ def submit_project(request, event_id):
             status=status.HTTP_400_BAD_REQUEST,
         )
 
-    if event.isFacultyMentorRequired and not faculty_mentor_name:
+    if event.isFacultyMentorRequired and not payload["faculty_mentor_name"]:
         return Response({"error": "Faculty mentor name is required."}, status=status.HTTP_400_BAD_REQUEST)
 
-    participant_emails = [captain_email] + [_normalize_email(member['email']) for member in team_members]
+    participant_emails = [payload["captain_email"]] + [_normalize_email(member['email']) for member in payload["team_members"]]
     if len(participant_emails) != len(set(participant_emails)):
         return Response({"error": "Duplicate email addresses found in the team."}, status=status.HTTP_400_BAD_REQUEST)
 
     for email in participant_emails:
-        if TeamMember.objects.filter(email__iexact=email).exists():
-            return Response({"error": f"Email {email} is already registered in another project."}, status=status.HTTP_400_BAD_REQUEST)
-        if Project.objects.filter(captain_email__iexact=email).exists():
+        team_member_conflicts = TeamMember.objects.filter(email__iexact=email)
+        captain_conflicts = Project.objects.filter(captain_email__iexact=email)
+
+        if current_project is not None:
+            team_member_conflicts = team_member_conflicts.exclude(project=current_project)
+            captain_conflicts = captain_conflicts.exclude(pk=current_project.pk)
+
+        if team_member_conflicts.exists() or captain_conflicts.exists():
             return Response({"error": f"Email {email} is already registered in another project."}, status=status.HTTP_400_BAD_REQUEST)
 
-    captain_user = User.objects.filter(email__iexact=captain_email).first()
+    return None
+
+
+def _apply_project_submission(project, payload, created_by=None):
+    project.team_name = payload["team_name"]
+    project.project_topic = payload["project_topic"]
+    project.trl_level = payload["trl_level"]
+    project.sdgs = payload["sdgs"]
+    project.captain_name = payload["captain_name"]
+    project.captain_email = payload["captain_email"]
+    project.captain_phone = payload["captain_phone"]
+    project.team_members = payload["team_members"]
+    project.faculty_mentor_name = payload["faculty_mentor_name"]
+
+    update_fields = [
+        "team_name",
+        "project_topic",
+        "trl_level",
+        "sdgs",
+        "captain_name",
+        "captain_email",
+        "captain_phone",
+        "team_members",
+        "faculty_mentor_name",
+    ]
+
+    if created_by is not None and project.created_by_id != created_by.id:
+        project.created_by = created_by
+        update_fields.append("created_by")
+
+    project.save(update_fields=update_fields)
+    sync_project_participants(project)
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+@transaction.atomic
+def submit_project(request, event_id):
+    event = get_object_or_404(SubSubEvent, event_id=event_id)
+
+    try:
+        payload = _parse_project_submission_data(request.data)
+    except ValueError as exc:
+        return Response({"error": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+
+    is_manual_entry = _user_can_manage_event(request.user, event)
+    validation_error = _validate_project_submission_constraints(
+        event=event,
+        payload=payload,
+        requester=request.user,
+        is_manual_entry=is_manual_entry,
+    )
+    if validation_error is not None:
+        return validation_error
+
     project = Project.objects.create(
         event=event,
         created_by=request.user,
-        captain_user=captain_user,
-        team_name=team_name,
-        project_topic=project_topic,
-        trl_level=trl_level,
-        sdgs=sdgs,
-        captain_name=captain_name,
-        captain_email=captain_email,
-        captain_phone=captain_phone,
-        team_members=team_members,
-        faculty_mentor_name=faculty_mentor_name,
+        team_name=payload["team_name"],
+        project_topic=payload["project_topic"],
+        trl_level=payload["trl_level"],
+        sdgs=payload["sdgs"],
+        captain_name=payload["captain_name"],
+        captain_email=payload["captain_email"],
+        captain_phone=payload["captain_phone"],
+        team_members=payload["team_members"],
+        faculty_mentor_name=payload["faculty_mentor_name"],
     )
-
-    for member in team_members:
-        linked_user = User.objects.filter(email__iexact=member['email']).first()
-        TeamMember.objects.create(
-            name=_display_member_name(member['name'], member['email']),
-            email=member['email'],
-            phone=member['phone'],
-            user=linked_user,
-            project=project,
-        )
+    sync_project_participants(project)
 
     serialized_project = ProjectSerializer(project).data
     return Response(
@@ -347,6 +407,75 @@ def submit_project(request, event_id):
             "project": serialized_project,
         },
         status=status.HTTP_201_CREATED,
+    )
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def event_registrations(request, event_pk):
+    event = get_object_or_404(SubSubEvent, pk=event_pk)
+    if not _user_can_manage_event(request.user, event):
+        return Response({"error": "Unauthorized Access"}, status=status.HTTP_403_FORBIDDEN)
+
+    projects = (
+        Project.objects.filter(event=event)
+        .prefetch_related('members')
+        .order_by('team_name', 'id')
+    )
+    evaluations = Evaluation.objects.filter(subsubevent=event).select_related('project')
+    evaluation_map = {evaluation.project_id: evaluation for evaluation in evaluations}
+
+    return Response(
+        {
+            "event": _serialize_event_summary(event),
+            "projects": [_statistics_project_payload(project, evaluation_map) for project in projects],
+        },
+        status=status.HTTP_200_OK,
+    )
+
+
+@api_view(['PATCH', 'DELETE'])
+@permission_classes([IsAuthenticated])
+@transaction.atomic
+def manage_event_registration(request, event_pk, project_id):
+    event = get_object_or_404(SubSubEvent, pk=event_pk)
+    if not _user_can_manage_event(request.user, event):
+        return Response({"error": "Unauthorized Access"}, status=status.HTTP_403_FORBIDDEN)
+
+    project = get_object_or_404(Project.objects.prefetch_related('members'), pk=project_id, event=event)
+
+    if request.method == 'DELETE':
+        team_name = project.team_name
+        project.delete()
+        return Response(
+            {"message": f'Team "{team_name}" deleted successfully.'},
+            status=status.HTTP_200_OK,
+        )
+
+    try:
+        payload = _parse_project_submission_data(request.data)
+    except ValueError as exc:
+        return Response({"error": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+
+    validation_error = _validate_project_submission_constraints(
+        event=event,
+        payload=payload,
+        requester=request.user,
+        is_manual_entry=True,
+        current_project=project,
+    )
+    if validation_error is not None:
+        return validation_error
+
+    _apply_project_submission(project, payload, created_by=project.created_by or request.user)
+    refreshed_project = Project.objects.prefetch_related('members').get(pk=project.pk)
+
+    return Response(
+        {
+            "message": "Team updated successfully.",
+            "project": _statistics_project_payload(refreshed_project, {}),
+        },
+        status=status.HTTP_200_OK,
     )
 
 

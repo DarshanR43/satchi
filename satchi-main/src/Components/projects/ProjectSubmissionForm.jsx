@@ -19,6 +19,35 @@ import { SDG_OPTIONS, TRL_OPTIONS } from "../../lib/projectMeta";
 const blankMember = () => ({ name: "", email: "", phone: "" });
 const memberHasAnyValue = (member = {}) =>
   Boolean((member.name || "").trim() || (member.email || "").trim() || (member.phone || "").trim());
+const normalizeMember = (member = {}) => ({
+  name: member.name || "",
+  email: member.email || "",
+  phone: member.phone || "",
+});
+const buildInitialFormData = ({
+  captainDefaults,
+  initialValues,
+  minimumVisibleMemberCount,
+}) => {
+  const initialMembers = Array.isArray(initialValues?.teamMembers)
+    ? initialValues.teamMembers
+    : Array.isArray(initialValues?.team_members)
+      ? initialValues.team_members
+      : [];
+  const visibleMemberCount = Math.max(minimumVisibleMemberCount, initialMembers.length);
+
+  return {
+    team_name: initialValues?.teamName || initialValues?.team_name || "",
+    project_topic: initialValues?.projectTopic || initialValues?.project_topic || "",
+    trl_level: initialValues?.trlLevel?.toString?.() || initialValues?.trl_level?.toString?.() || "",
+    sdgs: Array.isArray(initialValues?.sdgs) ? initialValues.sdgs.map(Number).sort((a, b) => a - b) : [],
+    captain_name: initialValues?.captain?.name || initialValues?.captain_name || captainDefaults?.full_name || "",
+    captain_email: initialValues?.captain?.email || initialValues?.captain_email || captainDefaults?.email || "",
+    captain_phone: initialValues?.captain?.phone || initialValues?.captain_phone || captainDefaults?.phone || "",
+    team_members: Array.from({ length: visibleMemberCount }, (_, index) => normalizeMember(initialMembers[index])),
+    faculty_mentor_name: initialValues?.facultyMentorName || initialValues?.faculty_mentor_name || "",
+  };
+};
 
 const inputClassName =
   "w-full rounded-lg border border-gray-300 bg-gray-50 px-4 py-2.5 text-gray-800 transition focus:border-transparent focus:outline-none focus:ring-2 focus:ring-[#ff6a3c]";
@@ -42,27 +71,25 @@ const ProjectSubmissionForm = ({
   captainDefaults,
   lockCaptainIdentity = false,
   prefillMaxMemberSlots = false,
+  initialValues = null,
   submitLabel,
   submitProject,
   successRedirectPath,
   successMessage = "Registration successful! Redirecting...",
+  onSuccess,
 }) => {
   const navigate = useNavigate();
   const minMemberCount = Math.max((event?.minTeamSize || 1) - 1, 0);
   const maxMemberCount = Math.max((event?.maxTeamSize || 1) - 1, 0);
   const initialVisibleMemberSlots = prefillMaxMemberSlots ? maxMemberCount : minMemberCount;
 
-  const [formData, setFormData] = useState({
-    team_name: "",
-    project_topic: "",
-    trl_level: "",
-    sdgs: [],
-    captain_name: "",
-    captain_email: "",
-    captain_phone: "",
-    team_members: Array.from({ length: initialVisibleMemberSlots }, blankMember),
-    faculty_mentor_name: "",
-  });
+  const [formData, setFormData] = useState(() =>
+    buildInitialFormData({
+      captainDefaults,
+      initialValues,
+      minimumVisibleMemberCount: initialVisibleMemberSlots,
+    }),
+  );
   const [submissionStatus, setSubmissionStatus] = useState({ message: "", type: "" });
 
   useEffect(() => {
@@ -73,6 +100,20 @@ const ProjectSubmissionForm = ({
       captain_phone: captainDefaults?.phone || current.captain_phone,
     }));
   }, [captainDefaults]);
+
+  useEffect(() => {
+    if (!initialValues) {
+      return;
+    }
+    setFormData(
+      buildInitialFormData({
+        captainDefaults,
+        initialValues,
+        minimumVisibleMemberCount: initialVisibleMemberSlots,
+      }),
+    );
+    setSubmissionStatus({ message: "", type: "" });
+  }, [captainDefaults, initialValues, initialVisibleMemberSlots]);
 
   useEffect(() => {
     setFormData((current) => {
@@ -160,8 +201,9 @@ const ProjectSubmissionForm = ({
         team_members: formData.team_members.filter(memberHasAnyValue),
       };
 
-      await submitProject(payload);
+      const result = await submitProject(payload);
       setSubmissionStatus({ message: successMessage, type: "success" });
+      await Promise.resolve(onSuccess?.(result));
       if (successRedirectPath) {
         setTimeout(() => navigate(successRedirectPath), 1800);
       }

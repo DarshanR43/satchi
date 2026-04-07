@@ -6,6 +6,7 @@ from django.contrib.auth.decorators import login_required
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.authtoken.models import Token
 from django.contrib.auth import get_user_model
+from api.services import sync_user_project_links_for_user
 from .decorators import event_role_required
 from .services.roles import assign_global_role, sync_role_flags
 
@@ -83,6 +84,7 @@ def signup_view(request):
 
         user.set_password(password)
         user.save()
+        sync_user_project_links_for_user(user)
 
         return Response({"message": "User created successfully"}, status=status.HTTP_201_CREATED)
 
@@ -97,6 +99,7 @@ def login_view(request):
 
     if user:
         sync_role_flags(user)
+        sync_user_project_links_for_user(user)
         token, created = Token.objects.get_or_create(user=user)
         return Response({
             "token": token.key,
@@ -119,6 +122,7 @@ def get_user_details(request):
         return Response({"error": "User not authenticated"}, status=status.HTTP_401_UNAUTHORIZED)
     else:
         sync_role_flags(request.user)
+        sync_user_project_links_for_user(request.user)
         return Response({"user": _serialize_user(request.user)}, status=status.HTTP_200_OK)
 
 
@@ -167,6 +171,7 @@ def manage_users(request):
     user.set_password(password)
     user.save()
     assign_global_role(user, role)
+    sync_user_project_links_for_user(user)
 
     return Response(
         {
