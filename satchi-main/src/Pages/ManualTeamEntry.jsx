@@ -128,6 +128,7 @@ const ManualTeamEntryPage = () => {
           <ProjectSubmissionForm
             event={event}
             captainDefaults={{}}
+            prefillMaxMemberSlots
             submitLabel="Save Team Entry"
             submitProject={submitProject}
             successRedirectPath="/admin"

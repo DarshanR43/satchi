@@ -17,6 +17,8 @@ import {
 import { SDG_OPTIONS, TRL_OPTIONS } from "../../lib/projectMeta";
 
 const blankMember = () => ({ name: "", email: "", phone: "" });
+const memberHasAnyValue = (member = {}) =>
+  Boolean((member.name || "").trim() || (member.email || "").trim() || (member.phone || "").trim());
 
 const inputClassName =
   "w-full rounded-lg border border-gray-300 bg-gray-50 px-4 py-2.5 text-gray-800 transition focus:border-transparent focus:outline-none focus:ring-2 focus:ring-[#ff6a3c]";
@@ -39,6 +41,7 @@ const ProjectSubmissionForm = ({
   event,
   captainDefaults,
   lockCaptainIdentity = false,
+  prefillMaxMemberSlots = false,
   submitLabel,
   submitProject,
   successRedirectPath,
@@ -47,6 +50,7 @@ const ProjectSubmissionForm = ({
   const navigate = useNavigate();
   const minMemberCount = Math.max((event?.minTeamSize || 1) - 1, 0);
   const maxMemberCount = Math.max((event?.maxTeamSize || 1) - 1, 0);
+  const initialVisibleMemberSlots = prefillMaxMemberSlots ? maxMemberCount : minMemberCount;
 
   const [formData, setFormData] = useState({
     team_name: "",
@@ -56,7 +60,7 @@ const ProjectSubmissionForm = ({
     captain_name: "",
     captain_email: "",
     captain_phone: "",
-    team_members: Array.from({ length: minMemberCount }, blankMember),
+    team_members: Array.from({ length: initialVisibleMemberSlots }, blankMember),
     faculty_mentor_name: "",
   });
   const [submissionStatus, setSubmissionStatus] = useState({ message: "", type: "" });
@@ -72,19 +76,21 @@ const ProjectSubmissionForm = ({
 
   useEffect(() => {
     setFormData((current) => {
+      const minimumVisibleMemberCount = prefillMaxMemberSlots ? maxMemberCount : minMemberCount;
       const members = [...current.team_members];
-      while (members.length < minMemberCount) {
+      while (members.length < minimumVisibleMemberCount) {
         members.push(blankMember());
       }
-      if (members.length > maxMemberCount && maxMemberCount >= minMemberCount) {
+      if (members.length > maxMemberCount && maxMemberCount >= minimumVisibleMemberCount) {
         members.length = maxMemberCount;
       }
       return { ...current, team_members: members };
     });
-  }, [minMemberCount, maxMemberCount]);
+  }, [minMemberCount, maxMemberCount, prefillMaxMemberSlots]);
 
   const canAddMember = formData.team_members.length < maxMemberCount;
   const canRemoveMember = formData.team_members.length > minMemberCount;
+  const enteredMemberCount = formData.team_members.filter(memberHasAnyValue).length;
 
   const sdgSummary = useMemo(() => {
     if (!formData.sdgs.length) {
@@ -151,9 +157,7 @@ const ProjectSubmissionForm = ({
         ...formData,
         trl_level: formData.trl_level ? Number(formData.trl_level) : "",
         sdgs: formData.sdgs,
-        team_members: formData.team_members.filter((member) =>
-          member.name.trim() || member.email.trim() || member.phone.trim(),
-        ),
+        team_members: formData.team_members.filter(memberHasAnyValue),
       };
 
       await submitProject(payload);
@@ -313,8 +317,16 @@ const ProjectSubmissionForm = ({
         {event?.maxTeamSize > 1 && (
           <div>
             <label className="mb-2 block font-semibold text-gray-700">
-              Team Members <span className="text-sm font-normal text-gray-500">(Min: {event.minTeamSize}, Max: {event.maxTeamSize})</span>
+              Additional Team Members{" "}
+              <span className="text-sm font-normal text-gray-500">
+                (Captain counts as 1. Total team size: {event.minTeamSize}-{event.maxTeamSize})
+              </span>
             </label>
+            <p className="mb-4 text-sm text-gray-500">
+              {prefillMaxMemberSlots
+                ? "All available member slots are ready for manual entry. Leave unused rows blank and they will be ignored on save."
+                : "Add the rest of your team here. Empty optional rows are ignored on save."}
+            </p>
             <div className="space-y-4">
               {formData.team_members.map((member, index) => (
                 <div key={`${index}-${event?.eventId || "team-member"}`} className="rounded-xl border border-gray-200 bg-gray-50/80 p-4">
@@ -371,7 +383,7 @@ const ProjectSubmissionForm = ({
               </button>
               <div className="inline-flex items-center gap-2 rounded-md bg-gray-100 px-4 py-2 text-sm text-gray-500">
                 <Hash size={16} />
-                Non-captain members: {formData.team_members.length}
+                Entered members: {enteredMemberCount} / {maxMemberCount}
               </div>
             </div>
           </div>
