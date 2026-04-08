@@ -6,6 +6,7 @@ import {
   Briefcase,
   Calendar,
   CalendarRange,
+  Cpu,
   GraduationCap,
   Hash,
   Layers,
@@ -20,7 +21,7 @@ import axios from "axios";
 
 import { useAuth } from "../context/AuthContext";
 import { API_URL } from "../lib/api";
-import { SDG_OPTIONS } from "../lib/projectMeta";
+import { getProjectCategoryLabel, SDG_OPTIONS } from "../lib/projectMeta";
 
 const ProfileDetail = ({ icon, label, value }) => {
   if (!value) return null;
@@ -78,6 +79,7 @@ const ProfilePage = () => {
       mainEvent,
       teamName,
       projectTopic,
+      projectCategory,
       role,
       registeredAt,
       captain,
@@ -108,6 +110,12 @@ const ProfilePage = () => {
             </div>
           )}
           {projectTopic && <p className="leading-5 text-gray-500">{projectTopic}</p>}
+          {projectCategory && (
+            <div className="flex items-center gap-2">
+              <Cpu size={16} className="text-[#ff6a3c]" />
+              <span>{getProjectCategoryLabel(projectCategory)}</span>
+            </div>
+          )}
           {trlLevel && (
             <div className="flex items-center gap-2">
               <Target size={16} className="text-[#ff6a3c]" />

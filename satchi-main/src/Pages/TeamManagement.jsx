@@ -7,6 +7,7 @@ import {
   ArrowLeft,
   Briefcase,
   CalendarRange,
+  Cpu,
   Edit3,
   FileText,
   Loader,
@@ -24,7 +25,7 @@ import {
 import ProjectSubmissionForm from "../Components/projects/ProjectSubmissionForm";
 import { useAuth } from "../context/AuthContext";
 import { API_URL } from "../lib/api";
-import { SDG_OPTIONS } from "../lib/projectMeta";
+import { getProjectCategoryLabel, SDG_OPTIONS } from "../lib/projectMeta";
 
 const allowedRoles = [
   "SUPERADMIN",
@@ -102,6 +103,8 @@ const TeamManagementPage = () => {
       const haystack = [
         project.teamName,
         project.projectTopic,
+        project.projectCategory,
+        getProjectCategoryLabel(project.projectCategory),
         project.captain?.name,
         project.captain?.email,
         project.captain?.phone,
@@ -276,6 +279,11 @@ const TeamManagementPage = () => {
                   <div className="min-w-0">
                     <div className="flex flex-wrap items-center gap-2">
                       <h2 className="truncate text-xl font-bold text-gray-900">{project.teamName}</h2>
+                      {project.projectCategory && (
+                        <span className="rounded-full bg-sky-100 px-2.5 py-1 text-xs font-semibold text-sky-700">
+                          {getProjectCategoryLabel(project.projectCategory)}
+                        </span>
+                      )}
                       {project.trlLevel && (
                         <span className="rounded-full bg-orange-100 px-2.5 py-1 text-xs font-semibold text-[#df9400]">
                           TRL {project.trlLevel}
@@ -370,6 +378,12 @@ const TeamManagementPage = () => {
                     <CalendarRange size={14} className="text-[#ff6a3c]" />
                     Registered {formatDateTime(project.registeredAt)}
                   </div>
+                  {project.projectCategory && (
+                    <div className="inline-flex items-center gap-2 rounded-full bg-sky-100 px-3 py-1.5 text-sky-700">
+                      <Cpu size={14} />
+                      {getProjectCategoryLabel(project.projectCategory)}
+                    </div>
+                  )}
                   {project.trlLevel && (
                     <div className="inline-flex items-center gap-2 rounded-full bg-gray-100 px-3 py-1.5">
                       <Target size={14} className="text-[#ff6a3c]" />
@@ -419,7 +433,7 @@ const TeamManagementPage = () => {
                   <div>
                     <h2 className="text-2xl font-bold text-gray-900">Edit Team</h2>
                     <p className="mt-1 text-sm text-gray-500">
-                      Update the captain, members, project details, TRL, SDGs, and mentor information.
+                      Update the captain, members, category, project details, TRL, SDGs, and mentor information.
                     </p>
                   </div>
                   <button

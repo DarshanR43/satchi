@@ -5,12 +5,17 @@ from users.models import User
 
 class Project(models.Model):
     TRL_LEVELS = [(level, f"TRL {level}") for level in range(1, 10)]
+    PROJECT_CATEGORIES = [
+        ("HARDWARE", "Hardware"),
+        ("SOFTWARE", "Software"),
+    ]
 
     event = models.ForeignKey(SubSubEvent, on_delete=models.CASCADE,default=1)
     created_by = models.ForeignKey(User, related_name='created_projects', on_delete=models.SET_NULL, null=True, blank=True)
     captain_user = models.ForeignKey(User, related_name='captain_projects', on_delete=models.SET_NULL, null=True, blank=True)
     team_name = models.CharField(max_length=100)
     project_topic = models.TextField()
+    project_category = models.CharField(max_length=20, choices=PROJECT_CATEGORIES, blank=True, null=True)
     trl_level = models.PositiveSmallIntegerField(
         choices=TRL_LEVELS,
         null=True,

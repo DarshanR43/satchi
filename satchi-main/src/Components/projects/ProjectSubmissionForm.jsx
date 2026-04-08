@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import {
   Briefcase,
+  Cpu,
   FileText,
   Hash,
   Mail,
@@ -14,7 +15,7 @@ import {
   Users,
 } from "lucide-react";
 
-import { SDG_OPTIONS, TRL_OPTIONS } from "../../lib/projectMeta";
+import { PROJECT_CATEGORY_OPTIONS, SDG_OPTIONS, TRL_OPTIONS } from "../../lib/projectMeta";
 
 const blankMember = () => ({ name: "", email: "", phone: "" });
 const memberHasAnyValue = (member = {}) =>
@@ -39,6 +40,7 @@ const buildInitialFormData = ({
   return {
     team_name: initialValues?.teamName || initialValues?.team_name || "",
     project_topic: initialValues?.projectTopic || initialValues?.project_topic || "",
+    project_category: initialValues?.projectCategory || initialValues?.project_category || "",
     trl_level: initialValues?.trlLevel?.toString?.() || initialValues?.trl_level?.toString?.() || "",
     sdgs: Array.isArray(initialValues?.sdgs) ? initialValues.sdgs.map(Number).sort((a, b) => a - b) : [],
     captain_name: initialValues?.captain?.name || initialValues?.captain_name || captainDefaults?.full_name || "",
@@ -248,7 +250,30 @@ const ProjectSubmissionForm = ({
           </div>
         </div>
 
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+          <div>
+            <label htmlFor="project_category" className="mb-1.5 block text-sm font-semibold text-gray-600">
+              Project Category
+            </label>
+            <div className="relative">
+              <Cpu className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
+              <select
+                id="project_category"
+                name="project_category"
+                value={formData.project_category}
+                onChange={handleInputChange}
+                required
+                className={`${inputClassName} pl-11 pr-4`}
+              >
+                <option value="">Select Project Category</option>
+                {PROJECT_CATEGORY_OPTIONS.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
           <div>
             <label htmlFor="trl_level" className="mb-1.5 block text-sm font-semibold text-gray-600">
               TRL Level

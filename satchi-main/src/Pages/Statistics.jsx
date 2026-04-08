@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useMemo, useState, useEffect } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { motion } from "framer-motion";
 import {
   BarChart,
@@ -16,6 +16,7 @@ import {
   AlertCircle,
   ArrowLeft,
   BarChart3,
+  Cpu,
   Filter,
   Layers,
   Target,
@@ -23,12 +24,16 @@ import {
   Trophy,
   Users,
 } from "lucide-react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import axios from "axios";
 
 import { useAuth } from "../context/AuthContext";
 import { API_URL } from "../lib/api";
-import { SDG_OPTIONS } from "../lib/projectMeta";
+import {
+  getProjectCategoryLabel,
+  PROJECT_CATEGORY_OPTIONS,
+  SDG_OPTIONS,
+} from "../lib/projectMeta";
 
 export default function Statistics() {
   const { eventId } = useParams();
@@ -36,6 +41,7 @@ export default function Statistics() {
   const { token, isAuthenticated } = useAuth();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [selectedCategory, setSelectedCategory] = useState(null);
   const [selectedTrl, setSelectedTrl] = useState(null);
   const [selectedSdg, setSelectedSdg] = useState(null);
   const [stats, setStats] = useState({
@@ -46,6 +52,7 @@ export default function Statistics() {
     averageMark: 0,
     highestMark: 0,
     marks: [],
+    projectCategoryBreakdown: [],
     trlBreakdown: [],
     sdgBreakdown: [],
     projects: [],
@@ -97,13 +104,27 @@ export default function Statistics() {
     return bins;
   }, [stats.marks]);
 
+  const categoryBreakdown = useMemo(() => {
+    const incoming = Array.isArray(stats.projectCategoryBreakdown) ? stats.projectCategoryBreakdown : [];
+    if (incoming.length > 0) {
+      return incoming;
+    }
+
+    return PROJECT_CATEGORY_OPTIONS.map((option) => ({
+      category: option.value,
+      label: option.label,
+      count: 0,
+    }));
+  }, [stats.projectCategoryBreakdown]);
+
   const filteredProjects = useMemo(() => {
     return (stats.projects || []).filter((project) => {
+      const categoryMatch = selectedCategory ? project.projectCategory === selectedCategory : true;
       const trlMatch = selectedTrl ? Number(project.trlLevel) === Number(selectedTrl) : true;
       const sdgMatch = selectedSdg ? (project.sdgs || []).map(Number).includes(Number(selectedSdg)) : true;
-      return trlMatch && sdgMatch;
+      return categoryMatch && trlMatch && sdgMatch;
     });
-  }, [stats.projects, selectedTrl, selectedSdg]);
+  }, [selectedCategory, selectedSdg, selectedTrl, stats.projects]);
 
   const maxCount = distributionData.length > 0 ? Math.max(...distributionData.map((entry) => entry.count)) : 0;
   const yMax = Math.ceil((maxCount + 1) / 5) * 5 || 5;
@@ -162,7 +183,7 @@ export default function Statistics() {
               {stats.eventName || "Event Statistics"}
             </h1>
             <p className="mx-auto mt-3 max-w-2xl text-lg text-gray-600">
-              Drill into project registrations by TRL and SDGs while keeping the judging metrics in view.
+              Drill into registrations by project category, TRL, and SDGs while keeping the judging metrics in view.
             </p>
           </motion.div>
         </div>
@@ -235,11 +256,12 @@ export default function Statistics() {
               <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
                 <div>
                   <h2 className="text-xl font-bold text-gray-900">Project Filters</h2>
-                  <p className="text-sm text-gray-500">Click a TRL or SDG tile to drill into matching teams.</p>
+                  <p className="text-sm text-gray-500">Click a category, TRL, or SDG tile to drill into matching teams.</p>
                 </div>
                 <button
                   type="button"
                   onClick={() => {
+                    setSelectedCategory(null);
                     setSelectedTrl(null);
                     setSelectedSdg(null);
                   }}
@@ -250,7 +272,36 @@ export default function Statistics() {
                 </button>
               </div>
 
-              <div className="grid gap-8 lg:grid-cols-2">
+              <div className="grid gap-8 xl:grid-cols-3">
+                <div>
+                  <h3 className="mb-3 text-sm font-bold uppercase tracking-wider text-gray-500">Project Category</h3>
+                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-1">
+                    {categoryBreakdown.map((entry) => {
+                      const active = selectedCategory === entry.category;
+                      return (
+                        <button
+                          key={`category-${entry.category}`}
+                          type="button"
+                          onClick={() => setSelectedCategory(active ? null : entry.category)}
+                          className={`rounded-2xl border px-4 py-4 text-left transition ${
+                            active
+                              ? "border-[#ff6a3c] bg-orange-50 shadow-sm"
+                              : "border-gray-200 bg-white hover:border-orange-200 hover:bg-orange-50/50"
+                          }`}
+                        >
+                          <div className="flex items-start justify-between gap-3">
+                            <div>
+                              <p className="text-sm font-bold text-gray-800">{entry.label}</p>
+                              <p className="mt-1 text-xs leading-5 text-gray-500">Registered teams in this category</p>
+                            </div>
+                            <span className="text-2xl font-bold text-[#ff6a3c]">{entry.count}</span>
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
                 <div>
                   <h3 className="mb-3 text-sm font-bold uppercase tracking-wider text-gray-500">TRL Breakdown</h3>
                   <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
@@ -319,15 +370,16 @@ export default function Statistics() {
                   <h2 className="text-xl font-bold text-gray-900">Projects</h2>
                   <p className="text-sm text-gray-500">
                     Showing {filteredProjects.length} of {stats.projects.length} teams
-                    {selectedTrl ? ` · TRL ${selectedTrl}` : ""}
-                    {selectedSdg ? ` · SDG ${selectedSdg}` : ""}
+                    {selectedCategory ? ` | ${getProjectCategoryLabel(selectedCategory)}` : ""}
+                    {selectedTrl ? ` | TRL ${selectedTrl}` : ""}
+                    {selectedSdg ? ` | SDG ${selectedSdg}` : ""}
                   </p>
                 </div>
               </div>
 
               {filteredProjects.length === 0 ? (
                 <div className="rounded-2xl border border-dashed border-gray-200 bg-gray-50/80 px-6 py-14 text-center text-sm text-gray-500">
-                  No projects match the current TRL and SDG filters.
+                  No projects match the current category, TRL, and SDG filters.
                 </div>
               ) : (
                 <div className="space-y-4">
@@ -337,6 +389,15 @@ export default function Statistics() {
                         <div className="min-w-0">
                           <div className="flex flex-wrap items-center gap-2">
                             <h3 className="truncate text-lg font-bold text-gray-900">{project.teamName}</h3>
+                            {project.projectCategory && (
+                              <button
+                                type="button"
+                                onClick={() => setSelectedCategory(project.projectCategory)}
+                                className="rounded-full bg-sky-100 px-2.5 py-1 text-xs font-semibold text-sky-700 transition hover:bg-sky-200"
+                              >
+                                {getProjectCategoryLabel(project.projectCategory)}
+                              </button>
+                            )}
                             {project.trlLevel && (
                               <span className="rounded-full bg-orange-100 px-2.5 py-1 text-xs font-semibold text-[#df9400]">
                                 TRL {project.trlLevel}
@@ -384,6 +445,16 @@ export default function Statistics() {
                       </div>
 
                       <div className="mt-4 flex flex-wrap gap-2">
+                        {project.projectCategory && (
+                          <button
+                            type="button"
+                            onClick={() => setSelectedCategory(project.projectCategory)}
+                            className="inline-flex items-center gap-2 rounded-full bg-sky-100 px-3 py-1 text-xs font-semibold text-sky-700 transition hover:bg-sky-200"
+                          >
+                            <Cpu size={12} />
+                            {getProjectCategoryLabel(project.projectCategory)}
+                          </button>
+                        )}
                         {(project.sdgs || []).map((sdg) => {
                           const option = SDG_OPTIONS.find((candidate) => candidate.value === Number(sdg));
                           return (

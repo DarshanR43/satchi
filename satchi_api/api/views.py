@@ -24,6 +24,12 @@ MANAGE_ROLES = {
     User.Role.SUBEVENTMANAGER,
     User.Role.SUBSUBEVENTMANAGER,
 }
+PROJECT_CATEGORY_LABELS = dict(Project.PROJECT_CATEGORIES)
+PROJECT_CATEGORY_ALIASES = {
+    **{value: value for value in PROJECT_CATEGORY_LABELS},
+    **{value.lower(): value for value in PROJECT_CATEGORY_LABELS},
+    **{label.lower(): value for value, label in PROJECT_CATEGORY_LABELS.items()},
+}
 
 
 def _normalize_email(value):
@@ -121,6 +127,18 @@ def _normalize_trl_level(raw_trl_level):
     return trl_level
 
 
+def _normalize_project_category(raw_project_category):
+    value = str(raw_project_category or "").strip()
+    if not value:
+        raise ValueError("Project category is required.")
+
+    normalized = PROJECT_CATEGORY_ALIASES.get(value) or PROJECT_CATEGORY_ALIASES.get(value.lower())
+    if not normalized:
+        raise ValueError("Project category must be Hardware or Software.")
+
+    return normalized
+
+
 def _user_can_manage_event(user, event):
     if not user or not user.is_authenticated:
         return False
@@ -205,6 +223,7 @@ def _serialize_registration(project, viewer):
         "projectId": project.id,
         "teamName": project.team_name,
         "projectTopic": project.project_topic,
+        "projectCategory": project.project_category,
         "trlLevel": project.trl_level,
         "sdgs": project.sdgs or [],
         "facultyMentorName": project.faculty_mentor_name,
@@ -240,6 +259,7 @@ def _statistics_project_payload(project, evaluation_map):
         "projectId": project.id,
         "teamName": project.team_name,
         "projectTopic": project.project_topic,
+        "projectCategory": project.project_category,
         "trlLevel": project.trl_level,
         "sdgs": project.sdgs or [],
         "facultyMentorName": project.faculty_mentor_name,
@@ -273,6 +293,7 @@ def _parse_project_submission_data(data):
     payload = {
         "team_name": (data.get('team_name') or '').strip(),
         "project_topic": (data.get('project_topic') or '').strip(),
+        "project_category": _normalize_project_category(data.get('project_category')),
         "captain_name": (data.get('captain_name') or '').strip(),
         "captain_email": _normalize_email(data.get('captain_email')),
         "captain_phone": _normalize_phone(data.get('captain_phone')),
@@ -336,6 +357,7 @@ def _validate_project_submission_constraints(event, payload, requester, is_manua
 def _apply_project_submission(project, payload, created_by=None):
     project.team_name = payload["team_name"]
     project.project_topic = payload["project_topic"]
+    project.project_category = payload["project_category"]
     project.trl_level = payload["trl_level"]
     project.sdgs = payload["sdgs"]
     project.captain_name = payload["captain_name"]
@@ -347,6 +369,7 @@ def _apply_project_submission(project, payload, created_by=None):
     update_fields = [
         "team_name",
         "project_topic",
+        "project_category",
         "trl_level",
         "sdgs",
         "captain_name",
@@ -390,6 +413,7 @@ def submit_project(request, event_id):
         created_by=request.user,
         team_name=payload["team_name"],
         project_topic=payload["project_topic"],
+        project_category=payload["project_category"],
         trl_level=payload["trl_level"],
         sdgs=payload["sdgs"],
         captain_name=payload["captain_name"],
@@ -528,12 +552,15 @@ def get_event_statistics(request, event_id):
     max_mark = evaluations.aggregate(Max('final_score'))['final_score__max'] or 0
 
     trl_counter = Counter()
+    project_category_counter = Counter()
     sdg_counter = Counter()
     total_participants = 0
     project_payload = []
 
     for project in projects:
         total_participants += 1 + len(_project_member_payload(project))
+        if project.project_category:
+            project_category_counter[project.project_category] += 1
         if project.trl_level:
             trl_counter[project.trl_level] += 1
         for sdg in project.sdgs or []:
@@ -543,6 +570,14 @@ def get_event_statistics(request, event_id):
     trl_breakdown = [
         {"trlLevel": level, "count": trl_counter.get(level, 0)}
         for level in range(1, 10)
+    ]
+    project_category_breakdown = [
+        {
+            "category": category,
+            "label": label,
+            "count": project_category_counter.get(category, 0),
+        }
+        for category, label in Project.PROJECT_CATEGORIES
     ]
     sdg_breakdown = [
         {"sdg": sdg, "count": sdg_counter.get(sdg, 0)}
@@ -558,6 +593,7 @@ def get_event_statistics(request, event_id):
             "averageMark": round(float(avg_mark), 2) if avg_mark else 0,
             "highestMark": float(max_mark) if max_mark else 0,
             "marks": marks,
+            "projectCategoryBreakdown": project_category_breakdown,
             "trlBreakdown": trl_breakdown,
             "sdgBreakdown": sdg_breakdown,
             "projects": project_payload,

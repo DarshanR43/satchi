@@ -13,6 +13,7 @@ class ProjectSerializer(serializers.ModelSerializer):
             "project_id",
             "team_name",
             "project_topic",
+            "project_category",
             "trl_level",
             "sdgs",
             "captain_name",

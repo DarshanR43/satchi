@@ -3,6 +3,11 @@ export const TRL_OPTIONS = Array.from({ length: 9 }, (_, index) => ({
   label: `TRL ${index + 1}`,
 }));
 
+export const PROJECT_CATEGORY_OPTIONS = [
+  { value: "HARDWARE", label: "Hardware" },
+  { value: "SOFTWARE", label: "Software" },
+];
+
 export const SDG_OPTIONS = [
   { value: 1, label: "SDG 1", title: "No Poverty" },
   { value: 2, label: "SDG 2", title: "Zero Hunger" },
@@ -22,3 +27,6 @@ export const SDG_OPTIONS = [
   { value: 16, label: "SDG 16", title: "Peace, Justice and Strong Institutions" },
   { value: 17, label: "SDG 17", title: "Partnerships for the Goals" },
 ];
+
+export const getProjectCategoryLabel = (value) =>
+  PROJECT_CATEGORY_OPTIONS.find((option) => option.value === value)?.label || value || "Unspecified";
