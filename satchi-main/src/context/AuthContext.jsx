@@ -1,11 +1,9 @@
 import React, { createContext, useState, useEffect, useContext } from 'react';
 import axios from 'axios';
+import { API_URL } from '../lib/api';
 
 // Create the context
 const AuthContext = createContext();
-
-// API base URL
-const API_URL = 'http://127.0.0.1:8000';
 
 // Create a provider component
 export const AuthProvider = ({ children }) => {

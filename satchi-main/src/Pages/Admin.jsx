@@ -1,11 +1,10 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Plus, ChevronDown, Trash2, X, Users, Power, CheckSquare, Square, AlertTriangle, ClipboardList, Edit3, Download, Menu, BarChart } from 'lucide-react';
+import { Plus, ChevronDown, Trash2, X, Users, Power, CheckSquare, Square, AlertTriangle, ClipboardList, Edit3, Download, Menu, BarChart, UserPlus } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
-import { Navigate, useNavigate } from 'react-router-dom';
+import { Link, Navigate, useNavigate } from 'react-router-dom';
 import axios from 'axios';
-
-const API_URL = import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000';
+import { API_URL } from '../lib/api';
 
 /* --- Components --- */
 
@@ -344,6 +343,11 @@ const EventAccordionCard = ({ event, user, onToggleStatus, onOpenRolesModal, onO
     return ['SUPERADMIN', 'EVENTADMIN', 'SUBEVENTADMIN', 'SUBEVENTMANAGER', 'SUBSUBEVENTMANAGER'].includes(ssRole);
   };
 
+  const canManuallyRegisterTeam = (subEvent, subSubEvent) => {
+    const ssRole = normalizeRole(subSubEvent.role || subEvent.role || event.role);
+    return ['SUPERADMIN', 'EVENTADMIN', 'EVENTMANAGER', 'SUBEVENTADMIN', 'SUBEVENTMANAGER', 'SUBSUBEVENTMANAGER'].includes(ssRole);
+  };
+
   return (
     <motion.div layout className="bg-white/80 backdrop-blur-lg border border-gray-200/90 rounded-2xl shadow-xl overflow-hidden w-full">
       <motion.div layout className="flex flex-col sm:flex-row justify-between items-start sm:items-center p-4 cursor-pointer hover:bg-gray-50/50 transition-colors gap-3" onClick={onExpand}>
@@ -407,11 +411,14 @@ const EventAccordionCard = ({ event, user, onToggleStatus, onOpenRolesModal, onO
                     )}
                     {subEvent.subSubEvents.map((ssEvent) => {
                       const canToggleSubSub = canToggleSubSubEvent(subEvent, ssEvent);
+                      const canAddTeam = canManuallyRegisterTeam(subEvent, ssEvent);
                       const isDownloading = downloadingId === ssEvent.id;
                       return (
                         <div key={ssEvent.id} className="flex flex-col sm:flex-row justify-between items-start sm:items-center pt-2 border-t border-dashed border-gray-200 gap-2">
                           <p className="text-sm text-gray-600 flex items-center gap-2 truncate w-full sm:w-auto"><StatusPill isOpen={ssEvent.isOpen} /> <span className="truncate">{ssEvent.name}</span></p>
                           <div className="flex items-center gap-1 self-end sm:self-auto overflow-x-auto max-w-full">
+                            <ActionButton onClick={() => navigate(`/admin/events/${ssEvent.id}/manual-entry`)} icon={UserPlus} colorClass="green" title="Add Team" disabled={!canAddTeam} />
+                            <ActionButton onClick={() => navigate(`/admin/events/${ssEvent.id}/teams`)} icon={Menu} colorClass="blue" title="Teams" disabled={!canAddTeam} />
                             {onDownloadRegistrations && <ActionButton onClick={() => onDownloadRegistrations(ssEvent)} icon={Download} colorClass="blue" title={isDownloading ? 'Downloading...' : 'Download'} disabled={isDownloading} />}
                             <ActionButton onClick={() => navigate(`/statistics/${ssEvent.eventId}`)} icon={BarChart} colorClass="blue" title="Statistics" />
                             <ActionButton onClick={() => onOpenJudgesModal(ssEvent)} icon={ClipboardList} colorClass="blue" title="Judges" />
@@ -583,9 +590,14 @@ const AdminPage = () => {
               <span className="text-xs sm:text-sm font-semibold text-gray-500 bg-gray-100 px-2 py-1 rounded-md self-start sm:self-auto">{user?.role}</span>
             </div>
             {user?.role === 'SUPERADMIN' && (
-              <button onClick={() => openCreateModal()} className="w-full sm:w-auto flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-[#ff6a3c] text-white font-bold text-sm shadow-md shadow-orange-500/20 hover:shadow-lg hover:shadow-orange-500/40 transition-all active:scale-95">
-                <Plus size={18} /> Create Event
-              </button>
+              <div className="flex w-full flex-col gap-3 sm:w-auto sm:flex-row">
+                <Link to="/admin/users" className="w-full sm:w-auto flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-gray-900 text-white font-bold text-sm shadow-md shadow-gray-900/10 hover:bg-gray-800 transition-all active:scale-95">
+                  <Users size={18} /> Manage Users
+                </Link>
+                <button onClick={() => openCreateModal()} className="w-full sm:w-auto flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-[#ff6a3c] text-white font-bold text-sm shadow-md shadow-orange-500/20 hover:shadow-lg hover:shadow-orange-500/40 transition-all active:scale-95">
+                  <Plus size={18} /> Create Event
+                </button>
+              </div>
             )}
           </div>
 

@@ -36,11 +36,13 @@ const Header = () => {
   ];
 
   const isAdmin = user && adminRoles.includes(user.role);
+  const isSuperAdmin = user && (user.role === "SUPERADMIN" || user.is_superuser);
 
   const menuItems = [
     { label: "Home", path: "/" },
     { label: "Events", path: "/events" },
     ...(isAdmin ? [{ label: "Admin", path: "/admin" },{ label: "Evaluation", path: "/evaluate" }] : []),
+    ...(isSuperAdmin ? [{ label: "Users", path: "/admin/users" }] : []),
     ...(isAuthenticated
       ? [{ label: "Profile", path: "/profile" }]
       : [{ label: "Login", path: "/login" }]),

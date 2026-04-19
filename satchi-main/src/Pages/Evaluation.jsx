@@ -3,15 +3,15 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
-  Send, BarChart2, Loader, Users, X, CheckCircle, 
+  Send, BarChart2, Cpu, Loader, Users, X, CheckCircle, 
   ChevronDown, Search, Download, Award, AlertCircle, 
   Layout, Trophy, Gavel, ArrowRight, CheckCircle2, ArrowLeft 
 } from 'lucide-react';
 import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
 import { Navigate, useNavigate } from 'react-router-dom';
-
-const API_URL = import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000';
+import { API_URL } from '../lib/api';
+import { getProjectCategoryLabel } from '../lib/projectMeta';
 
 // --- Reused Searchable Dropdown (Glassmorphism Style) ---
 const SearchableDropdown = ({ label, value, onChange, options, loading, disabled, valueKey = 'id', nameKey = 'name' }) => {
@@ -261,8 +261,11 @@ const EvaluationPage = () => {
 
     const filteredProjects = projects.filter(p => 
         p.team_name.toLowerCase().includes(projectSearchTerm.toLowerCase()) ||
+        (p.project_category || '').toLowerCase().includes(projectSearchTerm.toLowerCase()) ||
+        getProjectCategoryLabel(p.project_category).toLowerCase().includes(projectSearchTerm.toLowerCase()) ||
         String(p.project_id ?? p.id).includes(projectSearchTerm)
     );
+    const selectedProjectRecord = projects.find(p => String(p.project_id ?? p.id) === selectedProject);
 
     const handleDownloadSummary = async () => {
         if (!selectedSubSubEvent) return;
@@ -366,6 +369,14 @@ const EvaluationPage = () => {
                                                         <div className="overflow-hidden">
                                                             <div className={`text-xs font-bold mb-0.5 ${isSelected ? 'text-orange-100' : 'text-gray-400'}`}>#{pid}</div>
                                                             <div className={`font-bold text-sm truncate ${isSelected ? 'text-white' : 'text-gray-800'}`}>{project.team_name}</div>
+                                                            {project.project_category && (
+                                                                <div className={`mt-1 inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-bold uppercase ${
+                                                                    isSelected ? 'bg-white/20 text-white' : 'bg-sky-100 text-sky-700'
+                                                                }`}>
+                                                                    <Cpu size={10} />
+                                                                    {getProjectCategoryLabel(project.project_category)}
+                                                                </div>
+                                                            )}
                                                         </div>
                                                         {isEvaluated ? (
                                                             <CheckCircle size={18} className={`shrink-0 ${isSelected ? 'text-white' : 'text-green-500'}`} />
@@ -400,11 +411,17 @@ const EvaluationPage = () => {
                                         <div>
                                             <h2 className="text-lg font-bold text-gray-900">{selectedProjectName}</h2>
                                             <p className="text-xs text-gray-500 font-mono">Project ID: #{selectedProject}</p>
+                                            {selectedProjectRecord?.project_category && (
+                                                <div className="mt-1 inline-flex items-center gap-1 rounded-full bg-sky-100 px-2 py-0.5 text-[10px] font-bold uppercase text-sky-700">
+                                                    <Cpu size={10} />
+                                                    {getProjectCategoryLabel(selectedProjectRecord.project_category)}
+                                                </div>
+                                            )}
                                         </div>
                                     </div>
                                     <div className="flex items-center gap-2">
-                                        <span className={`px-2 py-1 rounded-md text-[10px] font-bold uppercase ${projects.find(p => String(p.project_id ?? p.id) === selectedProject)?.has_evaluation ? 'bg-green-100 text-green-700' : 'bg-orange-100 text-orange-700'}`}>
-                                            {projects.find(p => String(p.project_id ?? p.id) === selectedProject)?.has_evaluation ? 'Graded' : 'Pending'}
+                                        <span className={`px-2 py-1 rounded-md text-[10px] font-bold uppercase ${selectedProjectRecord?.has_evaluation ? 'bg-green-100 text-green-700' : 'bg-orange-100 text-orange-700'}`}>
+                                            {selectedProjectRecord?.has_evaluation ? 'Graded' : 'Pending'}
                                         </span>
                                     </div>
                                 </div>

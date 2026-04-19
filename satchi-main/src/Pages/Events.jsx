@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
+import { API_URL } from '../lib/api';
 import { 
   Loader, 
   ChevronRight, 
@@ -15,9 +16,7 @@ import {
   Users
 } from 'lucide-react';
 
-import SubSubEventModal from '../components/events/SubSubEventModal';
-
-const API_URL = import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000';
+import SubSubEventModal from '../Components/events/SubSubEventModal';
 
 const EventsPage = () => {
   const [events, setEvents] = useState([]);
