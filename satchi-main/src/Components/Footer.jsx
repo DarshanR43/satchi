@@ -69,7 +69,7 @@ const Footer = () => {
               <li><a href="/" className="hover:text-[#ff6a3c] transition-colors">Home</a></li>
               <li><a href="#about" className="hover:text-[#ff6a3c] transition-colors">About</a></li>
               <li><a href="/events" className="hover:text-[#ff6a3c] transition-colors">Events</a></li>
-              <li><a href="/register" className="hover:text-[#ff6a3c] transition-colors">Register</a></li>
+              {/* <li><a href="/register" className="hover:text-[#ff6a3c] transition-colors">Register</a></li> */}
               <li><a href="/privacy-policy" className="hover:text-[#ff6a3c] transition-colors">Privacy Policy</a></li>
               <li><a href="/terms" className="hover:text-[#ff6a3c] transition-colors">Terms & Conditions</a></li>
             </ul>
