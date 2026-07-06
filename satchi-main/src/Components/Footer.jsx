@@ -22,6 +22,13 @@ const InstagramIcon = () => (
   </svg>
 );
 
+const YoutubeIcon = () => (
+  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M22.54 6.42a2.78 2.78 0 0 0-1.94-2C18.88 4 12 4 12 4s-6.88 0-8.6.46a2.78 2.78 0 0 0-1.94 2A29 29 0 0 0 1 11.75a29 29 0 0 0 .46 5.33A2.78 2.78 0 0 0 3.4 19c1.72.46 8.6.46 8.6.46s6.88 0 8.6-.46a2.78 2.78 0 0 0 1.94-2 29 29 0 0 0 .46-5.25 29 29 0 0 0-.46-5.33z"></path>
+    <polygon points="9.75 15.02 15.5 11.75 9.75 8.48 9.75 15.02"></polygon>
+  </svg>
+);
+
 const ArrowUpIcon = () => (
    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
     <line x1="12" y1="19" x2="12" y2="5"></line>
@@ -82,6 +89,7 @@ const Footer = () => {
               <a href="https://github.com/AVV-IIC" target="_blank" rel="noopener noreferrer" aria-label="Github" className="text-gray-500 hover:text-[#ff6a3c] transition-colors"><GithubIcon /></a>
               <a href="https://www.linkedin.com/company/iicamrita/" target="_blank" rel="noopener noreferrer" aria-label="LinkedIn" className="text-gray-500 hover:text-[#ff6a3c] transition-colors"><LinkedinIcon /></a>
               <a href="https://www.instagram.com/iic.amrita/" target="_blank" rel="noopener noreferrer" aria-label="Instagram" className="text-gray-500 hover:text-[#ff6a3c] transition-colors"><InstagramIcon /></a>
+              <a href="https://www.youtube.com/@iic.amrita" target="_blank" rel="noopener noreferrer" aria-label="YouTube" className="text-gray-500 hover:text-[#ff6a3c] transition-colors"><YoutubeIcon /></a>
             </div>
           </div>
         </div>
