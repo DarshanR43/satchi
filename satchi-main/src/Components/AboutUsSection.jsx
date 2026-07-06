@@ -53,34 +53,35 @@ const StatCard = ({ icon, value, label, duration }) => {
 
 
 const AboutUsSection = () => {
-  const [eventsCount, setEventsCount] = useState(0);
+  const [stats, setStats] = useState({
+    events: 0,
+    participants: 0,
+    ideas: 0,
+    teams: 0,
+  });
 
   useEffect(() => {
-    const fetchEvents = async () => {
+    const fetchStats = async () => {
       try {
-        const response = await axios.get(`${API_URL}/events/getEvents/`);
-        let totalSubSubEvents = 0;
-        let totalSubEvents = 0;
-        if (response.data && Array.isArray(response.data)) {
-          response.data.forEach(mainEvent => {
-            if (mainEvent.subEvents && Array.isArray(mainEvent.subEvents)) {
-              totalSubEvents += mainEvent.subEvents.length;
-              mainEvent.subEvents.forEach(subEvent => {
-                if (subEvent.subSubEvents && Array.isArray(subEvent.subSubEvents)) {
-                  totalSubSubEvents += subEvent.subSubEvents.length;
-                }
-              });
-            }
-          });
-        }
-        // Use subSubEvents count if they exist, otherwise fallback to subEvents
-        setEventsCount(totalSubSubEvents > 0 ? totalSubSubEvents : totalSubEvents);
+        const response = await axios.get(`${API_URL}/api/public-stats/`);
+        setStats({
+          events: response.data.events_count || 0,
+          participants: response.data.participants_count || 0,
+          ideas: response.data.ideas_count || 0,
+          teams: response.data.teams_count || 0,
+        });
       } catch (err) {
-        console.error("Failed to fetch events count:", err);
-        setEventsCount(1); // Default fallback
+        console.error("Failed to fetch public stats:", err);
+        // Fallback default mock data if endpoint is not accessible
+        setStats({
+          events: 1,
+          participants: 2160,
+          ideas: 360,
+          teams: 360,
+        });
       }
     };
-    fetchEvents();
+    fetchStats();
   }, []);
 
   return (
@@ -132,10 +133,10 @@ const AboutUsSection = () => {
                 </motion.div>
                 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                   <StatCard icon={<Zap size={36} className="text-[#df9400]"/>} value={String(eventsCount)} label="Events" duration="2" />
-                   <StatCard icon={<Users size={36} className="text-[#df9400]"/>} value="2160" label="Participants" duration="3" />
-                   <StatCard icon={<Lightbulb size={36} className="text-[#df9400]"/>} value="360" label="Innovative Ideas" duration="2.5" />
-                   <StatCard icon={<svg xmlns="http://www.w3.org/2000/svg" width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-[#df9400]"><path d="M12 2L2 7l10 5 10-5-10-5z"></path><path d="M2 17l10 5 10-5"></path><path d="M2 12l10 5 10-5"></path></svg>} value="360" label="Teams Participated" duration="2" />
+                   <StatCard icon={<Zap size={36} className="text-[#df9400]"/>} value={String(stats.events)} label="Events" duration="2" />
+                   <StatCard icon={<Users size={36} className="text-[#df9400]"/>} value={String(stats.participants)} label="Participants" duration="3" />
+                   <StatCard icon={<Lightbulb size={36} className="text-[#df9400]"/>} value={String(stats.ideas)} label="Innovative Ideas" duration="2.5" />
+                   <StatCard icon={<svg xmlns="http://www.w3.org/2000/svg" width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-[#df9400]"><path d="M12 2L2 7l10 5 10-5-10-5z"></path><path d="M2 17l10 5 10-5"></path><path d="M2 12l10 5 10-5"></path></svg>} value={String(stats.teams)} label="Teams Participated" duration="2" />
                 </div>
             </div>
         </div>

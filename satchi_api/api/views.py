@@ -9,7 +9,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
 from eval.models import Evaluation
-from events.models import SubSubEvent
+from events.models import SubEvent, SubSubEvent
 from users.models import EventUserMapping, User
 
 from .models import Project, TeamMember
@@ -600,3 +600,51 @@ def get_event_statistics(request, event_id):
         },
         status=status.HTTP_200_OK,
     )
+
+
+@api_view(["GET"])
+@permission_classes([])
+def get_public_stats(request):
+    events_count = SubSubEvent.objects.count()
+    if events_count == 0:
+        events_count = SubEvent.objects.count()
+
+    teams_count = Project.objects.count()
+    ideas_count = teams_count
+
+    participants_count = 0
+    projects = Project.objects.all().prefetch_related('members')
+    for project in projects:
+        # Captain is 1 participant
+        participants_count += 1
+        
+        seen_emails = set()
+        captain_email = (project.captain_email or "").strip().lower()
+        
+        db_members_count = 0
+        for m in project.members.all():
+            m_email = (m.email or "").strip().lower()
+            if m_email and m_email != captain_email and m_email not in seen_emails:
+                seen_emails.add(m_email)
+                db_members_count += 1
+                
+        if db_members_count > 0:
+            participants_count += db_members_count
+        elif isinstance(project.team_members, list):
+            fallback_count = 0
+            for m in project.team_members:
+                if isinstance(m, dict):
+                    m_email = (m.get('email') or "").strip().lower()
+                else:
+                    m_email = ""
+                if m_email and m_email != captain_email and m_email not in seen_emails:
+                    seen_emails.add(m_email)
+                    fallback_count += 1
+            participants_count += fallback_count
+
+    return Response({
+        "events_count": events_count,
+        "participants_count": participants_count,
+        "ideas_count": ideas_count,
+        "teams_count": teams_count
+    }, status=status.HTTP_200_OK)
