@@ -1,6 +1,8 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { Users, Zap, Lightbulb } from 'lucide-react';
+import axios from 'axios';
+import { API_URL } from '../lib/api';
 
 const useAnimatedCounter = (target, duration = 2) => {
   const [count, setCount] = React.useState(0);
@@ -51,6 +53,36 @@ const StatCard = ({ icon, value, label, duration }) => {
 
 
 const AboutUsSection = () => {
+  const [eventsCount, setEventsCount] = useState(0);
+
+  useEffect(() => {
+    const fetchEvents = async () => {
+      try {
+        const response = await axios.get(`${API_URL}/events/getEvents/`);
+        let totalSubSubEvents = 0;
+        let totalSubEvents = 0;
+        if (response.data && Array.isArray(response.data)) {
+          response.data.forEach(mainEvent => {
+            if (mainEvent.subEvents && Array.isArray(mainEvent.subEvents)) {
+              totalSubEvents += mainEvent.subEvents.length;
+              mainEvent.subEvents.forEach(subEvent => {
+                if (subEvent.subSubEvents && Array.isArray(subEvent.subSubEvents)) {
+                  totalSubSubEvents += subEvent.subSubEvents.length;
+                }
+              });
+            }
+          });
+        }
+        // Use subSubEvents count if they exist, otherwise fallback to subEvents
+        setEventsCount(totalSubSubEvents > 0 ? totalSubSubEvents : totalSubEvents);
+      } catch (err) {
+        console.error("Failed to fetch events count:", err);
+        setEventsCount(1); // Default fallback
+      }
+    };
+    fetchEvents();
+  }, []);
+
   return (
     <section id="about" className="relative w-full mx-auto py-24 px-6 text-gray-800 overflow-hidden">
         <div className="absolute inset-0 bg-white z-0"></div>
@@ -100,7 +132,7 @@ const AboutUsSection = () => {
                 </motion.div>
                 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                   <StatCard icon={<Zap size={36} className="text-[#df9400]"/>} value="1" label="Events" duration="2" />
+                   <StatCard icon={<Zap size={36} className="text-[#df9400]"/>} value={String(eventsCount)} label="Events" duration="2" />
                    <StatCard icon={<Users size={36} className="text-[#df9400]"/>} value="2160" label="Participants" duration="3" />
                    <StatCard icon={<Lightbulb size={36} className="text-[#df9400]"/>} value="360" label="Innovative Ideas" duration="2.5" />
                    <StatCard icon={<svg xmlns="http://www.w3.org/2000/svg" width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-[#df9400]"><path d="M12 2L2 7l10 5 10-5-10-5z"></path><path d="M2 17l10 5 10-5"></path><path d="M2 12l10 5 10-5"></path></svg>} value="360" label="Teams Participated" duration="2" />

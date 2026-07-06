@@ -69,25 +69,26 @@ const Footer = () => {
           <div>
             <h4 className="text-lg font-semibold mb-4 text-[#df9400]">Venue</h4>
             <p className="text-gray-600 leading-relaxed">
-              Amrita Vishwa Vidyapeetham <br />
-              Amrita Nagar, Ettimadai, <br />
-              Coimbatore, Tamil Nadu - 641112
+              A - 405, Academic Block - 3, <br />
+              Institutions Innovation Council (IIC), <br />
+              Amrita Vishwa Vidhyapeetham, <br />
+              Ettimadai, Coimbatore - 641112
             </p>
           </div>
 
           <div>
             <h4 className="text-lg font-semibold mb-4 text-[#df9400]">Follow Us</h4>
             <div className="flex space-x-4">
-              <a href="#" aria-label="Github" className="text-gray-500 hover:text-[#ff6a3c] transition-colors"><GithubIcon /></a>
-              <a href="#" aria-label="LinkedIn" className="text-gray-500 hover:text-[#ff6a3c] transition-colors"><LinkedinIcon /></a>
-              <a href="#" aria-label="Instagram" className="text-gray-500 hover:text-[#ff6a3c] transition-colors"><InstagramIcon /></a>
+              <a href="https://github.com/AVV-IIC" target="_blank" rel="noopener noreferrer" aria-label="Github" className="text-gray-500 hover:text-[#ff6a3c] transition-colors"><GithubIcon /></a>
+              <a href="https://www.linkedin.com/company/iicamrita/" target="_blank" rel="noopener noreferrer" aria-label="LinkedIn" className="text-gray-500 hover:text-[#ff6a3c] transition-colors"><LinkedinIcon /></a>
+              <a href="https://www.instagram.com/iic.amrita/" target="_blank" rel="noopener noreferrer" aria-label="Instagram" className="text-gray-500 hover:text-[#ff6a3c] transition-colors"><InstagramIcon /></a>
             </div>
           </div>
         </div>
 
         <div className="mt-16 pt-8 border-t border-gray-200/80 flex flex-col items-center text-center">
           <p className="text-sm text-gray-500">
-            2025-2026 GYAN, All Rights Reserved.
+            ©2026 GYAN - IIC, Amrita Vishwa Vidhyapeetham, Coimbatore. All Rights Reserved
           </p>
         </div>
       </div>
