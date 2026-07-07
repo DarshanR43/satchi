@@ -1,4 +1,5 @@
-import React from "react";
+import React, { useEffect } from "react";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 
 const GithubIcon = () => (
   <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -38,6 +39,8 @@ const ArrowUpIcon = () => (
 
 
 const Footer = () => {
+  const navigate = useNavigate();
+  const location = useLocation();
 
   const scrollToTop = () => {
     window.scrollTo({
@@ -45,6 +48,32 @@ const Footer = () => {
       behavior: "smooth",
     });
   };
+
+  const handleAboutClick = (e) => {
+    e.preventDefault();
+    if (location.pathname === "/") {
+      const element = document.getElementById("about");
+      if (element) {
+        element.scrollIntoView({ behavior: "smooth" });
+      }
+    } else {
+      navigate("/", { state: { scrollToAbout: true } });
+    }
+  };
+
+  useEffect(() => {
+    if (location.pathname === "/" && location.state?.scrollToAbout) {
+      // Clear location state so that it doesn't scroll again on page refresh
+      navigate("/", { replace: true, state: {} });
+      // Use setTimeout to ensure the DOM is fully rendered before scrolling
+      setTimeout(() => {
+        const element = document.getElementById("about");
+        if (element) {
+          element.scrollIntoView({ behavior: "smooth" });
+        }
+      }, 100);
+    }
+  }, [location.pathname, location.state, navigate]);
 
   return (
     // Added 'z-0' here to prevent footer from overlapping higher z-index modals
@@ -66,12 +95,20 @@ const Footer = () => {
           <div>
             <h4 className="text-lg font-semibold mb-4 text-[#df9400]">Quick Links</h4>
             <ul className="space-y-2 text-gray-600">
-              <li><a href="/" className="hover:text-[#ff6a3c] transition-colors">Home</a></li>
-              <li><a href="#about" className="hover:text-[#ff6a3c] transition-colors">About</a></li>
-              <li><a href="/events" className="hover:text-[#ff6a3c] transition-colors">Events</a></li>
+              <li><Link to="/" className="hover:text-[#ff6a3c] transition-colors">Home</Link></li>
+              <li>
+                <a 
+                  href="/#about" 
+                  onClick={handleAboutClick} 
+                  className="hover:text-[#ff6a3c] transition-colors"
+                >
+                  About
+                </a>
+              </li>
+              <li><Link to="/events" className="hover:text-[#ff6a3c] transition-colors">Events</Link></li>
               {/* <li><a href="/register" className="hover:text-[#ff6a3c] transition-colors">Register</a></li> */}
-              <li><a href="/privacy-policy" className="hover:text-[#ff6a3c] transition-colors">Privacy Policy</a></li>
-              <li><a href="/terms" className="hover:text-[#ff6a3c] transition-colors">Terms & Conditions</a></li>
+              <li><Link to="/privacy-policy" className="hover:text-[#ff6a3c] transition-colors">Privacy Policy</Link></li>
+              <li><Link to="/terms" className="hover:text-[#ff6a3c] transition-colors">Terms & Conditions</Link></li>
             </ul>
           </div>
 
