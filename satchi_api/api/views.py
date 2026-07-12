@@ -341,15 +341,15 @@ def _validate_project_submission_constraints(event, payload, requester, is_manua
         return Response({"error": "Duplicate email addresses found in the team."}, status=status.HTTP_400_BAD_REQUEST)
 
     for email in participant_emails:
-        team_member_conflicts = TeamMember.objects.filter(email__iexact=email)
-        captain_conflicts = Project.objects.filter(captain_email__iexact=email)
+        team_member_conflicts = TeamMember.objects.filter(email__iexact=email, project__event=event)
+        captain_conflicts = Project.objects.filter(captain_email__iexact=email, event=event)
 
         if current_project is not None:
             team_member_conflicts = team_member_conflicts.exclude(project=current_project)
             captain_conflicts = captain_conflicts.exclude(pk=current_project.pk)
 
         if team_member_conflicts.exists() or captain_conflicts.exists():
-            return Response({"error": f"Email {email} is already registered in another project."}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({"error": f"Email {email} is already registered in this event."}, status=status.HTTP_400_BAD_REQUEST)
 
     return None
 
