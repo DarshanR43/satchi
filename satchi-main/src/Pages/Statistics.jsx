@@ -17,6 +17,7 @@ import {
   ArrowLeft,
   BarChart3,
   Cpu,
+  Download,
   Filter,
   Layers,
   Target,
@@ -125,6 +126,80 @@ export default function Statistics() {
       return categoryMatch && trlMatch && sdgMatch;
     });
   }, [selectedCategory, selectedSdg, selectedTrl, stats.projects]);
+
+  const handleDownloadCSV = () => {
+    const headers = [
+      "Project ID",
+      "Team Name",
+      "Project Topic",
+      "Project Category",
+      "TRL Level",
+      "SDGs",
+      "Faculty Mentor",
+      "Captain Name",
+      "Captain Email",
+      "Captain Phone",
+      "Team Members",
+      "Evaluated",
+      "Final Score",
+    ];
+
+    const rows = filteredProjects.map((project) => {
+      const categoryLabel = getProjectCategoryLabel(project.projectCategory) || project.projectCategory || "";
+      const sdgLabels = (project.sdgs || []).map((s) => `SDG ${s}`).join(", ");
+      
+      const membersList = (project.teamMembers || [])
+        .map((m) => {
+          let text = m.name || "";
+          if (m.email) text += ` <${m.email}>`;
+          if (m.phone) text += ` (${m.phone})`;
+          return text;
+        })
+        .join("; ");
+
+      return [
+        project.projectId || "",
+        project.teamName || "",
+        project.projectTopic || "",
+        categoryLabel,
+        project.trlLevel ? `TRL ${project.trlLevel}` : "",
+        sdgLabels,
+        project.facultyMentorName || "",
+        project.captain?.name || "",
+        project.captain?.email || "",
+        project.captain?.phone || "",
+        membersList,
+        project.isEvaluated ? "Yes" : "No",
+        project.finalScore !== null && project.finalScore !== undefined ? project.finalScore : "",
+      ];
+    });
+
+    const csvContent = [
+      headers.map((h) => `"${h.replace(/"/g, '""')}"`).join(","),
+      ...rows.map((row) =>
+        row.map((val) => {
+          const strVal = String(val);
+          return `"${strVal.replace(/"/g, '""')}"`;
+        }).join(",")
+      ),
+    ].join("\n");
+
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    
+    const eventSlug = (stats.eventName || "event")
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/(^-|-$)/g, "");
+    
+    link.setAttribute("href", url);
+    link.setAttribute("download", `${eventSlug}-filtered-projects.csv`);
+    link.style.visibility = "hidden";
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
 
   const maxCount = distributionData.length > 0 ? Math.max(...distributionData.map((entry) => entry.count)) : 0;
   const yMax = Math.ceil((maxCount + 1) / 5) * 5 || 5;
@@ -375,6 +450,16 @@ export default function Statistics() {
                     {selectedSdg ? ` | SDG ${selectedSdg}` : ""}
                   </p>
                 </div>
+                {filteredProjects.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={handleDownloadCSV}
+                    className="inline-flex items-center gap-2 rounded-xl bg-[#ff6a3c] px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-[#e0562b]"
+                  >
+                    <Download size={16} />
+                    Download Projects (CSV)
+                  </button>
+                )}
               </div>
 
               {filteredProjects.length === 0 ? (
