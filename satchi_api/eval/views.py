@@ -18,7 +18,7 @@ import csv
 from io import StringIO
 from django.utils.text import slugify
 
-from .models import SubSubEventJudge, Evaluation, EvaluationJudgeMark
+from .models import SubSubEventJudge, Evaluation, EvaluationJudgeMark, Rubric, EvaluationJudgeRubricMark
 from .serializers import (
     CreateJudgesSerializer,
     SubSubEventJudgeSerializer,
@@ -113,7 +113,8 @@ def link_judges_to_subsubevent(request):
     {
       "subsubevent_id": 5,
       "names": ["Judge A", "Judge B"],
-      "replace": true   # optional, default false. If true, deletes existing judges for that subsubevent first.
+      "replace": true,
+      "rubrics": [{"name": "Innovation", "max_mark": 10}]
     }
     """
     serializer = CreateJudgesSerializer(data=request.data)
@@ -125,24 +126,43 @@ def link_judges_to_subsubevent(request):
     with transaction.atomic():
         if data.get("replace"):
             SubSubEventJudge.objects.filter(subsubevent=subsub).delete()
+            Rubric.objects.filter(subsubevent=subsub).delete()
 
-        created = []
+        created_judges = []
         order = 0
         for name in data["names"]:
             order += 1
-            # Use get_or_create to avoid duplicates
             obj, created_flag = SubSubEventJudge.objects.get_or_create(
                 subsubevent=subsub,
                 name=name.strip(),
                 defaults={"order": order},
             )
-            # update order if needed
             if not created_flag and obj.order != order:
                 obj.order = order
                 obj.save(update_fields=["order"])
-            created.append({"id": obj.id, "name": obj.name, "order": obj.order})
+            created_judges.append({"id": obj.id, "name": obj.name, "order": obj.order})
 
-    return Response({"subsubevent_id": subsub.id, "judges": created}, status=status.HTTP_201_CREATED)
+        created_rubrics = []
+        for r_data in data.get("rubrics", []):
+            rubric_obj, created_flag = Rubric.objects.get_or_create(
+                subsubevent=subsub,
+                name=r_data["name"].strip(),
+                defaults={"max_mark": r_data["max_mark"]}
+            )
+            if not created_flag and rubric_obj.max_mark != r_data["max_mark"]:
+                rubric_obj.max_mark = r_data["max_mark"]
+                rubric_obj.save(update_fields=["max_mark"])
+            created_rubrics.append({
+                "id": rubric_obj.id,
+                "name": rubric_obj.name,
+                "max_mark": float(rubric_obj.max_mark)
+            })
+
+    return Response({
+        "subsubevent_id": subsub.id,
+        "judges": created_judges,
+        "rubrics": created_rubrics
+    }, status=status.HTTP_200_OK)
 
 
 @api_view(["GET"])
@@ -150,12 +170,20 @@ def link_judges_to_subsubevent(request):
 def list_judges_for_subsubevent(request, subsubevent_id):
     """
     GET /api/subsubevents/<id>/judges/
-    Returns list of judges (id, name, order)
+    Returns list of judges and configured rubrics
     """
     subsub = get_object_or_404(SubSubEvent, id=subsubevent_id)
     qs = SubSubEventJudge.objects.filter(subsubevent=subsub).order_by("order", "name")
-    data = [{"id": j.id, "name": j.name, "order": j.order} for j in qs]
-    return Response({"subsubevent_id": subsub.id, "judges": data}, status=status.HTTP_200_OK)
+    judges_data = [{"id": j.id, "name": j.name, "order": j.order} for j in qs]
+    
+    rubrics_qs = Rubric.objects.filter(subsubevent=subsub).order_by("id")
+    rubrics_data = [{"id": r.id, "name": r.name, "max_mark": float(r.max_mark)} for r in rubrics_qs]
+    
+    return Response({
+        "subsubevent_id": subsub.id,
+        "judges": judges_data,
+        "rubrics": rubrics_data
+    }, status=status.HTTP_200_OK)
 
 
 import logging
@@ -461,6 +489,9 @@ def submit_evaluation_marks(request):
                 logger.error("marks must be a list/tuple, got: %s", type(marks_input))
                 raise ValidationError({"marks": "Expected a list of mark objects."})
 
+            # Get existing rubrics for this sub-sub-event to validate against
+            valid_rubrics = {r.name: r for r in Rubric.objects.filter(subsubevent=subsub)}
+
             for idx, mi in enumerate(marks_input, start=1):
                 logger.debug("Processing mark #%d: %s", idx, mi)
                 judge_name = (mi.get("judge_name") or "").strip()
@@ -468,17 +499,41 @@ def submit_evaluation_marks(request):
                     logger.error("Empty judge_name at marks index %d: %s", idx, mi)
                     raise ValidationError({"marks": {idx - 1: {"judge_name": "This field may not be blank."}}})
 
-                # Parse/validate mark value robustly
-                raw_mark = mi.get("mark")
-                if raw_mark in (None, ""):
-                    logger.error("Missing mark value for judge '%s' at index %d", judge_name, idx)
-                    raise ValidationError({"marks": {idx - 1: {"mark": "This field is required."}}})
-                try:
-                    # Ensure string conversion so Decimal doesn't interpret floats unexpectedly
-                    mark_decimal = Decimal(str(raw_mark))
-                except (InvalidOperation, ValueError, TypeError) as exc:
-                    logger.exception("Invalid mark for judge '%s' at index %d: raw_mark=%r", judge_name, idx, raw_mark)
-                    raise ValidationError({"marks": {idx - 1: {"mark": f"Invalid numeric value: {raw_mark}"}}})
+                rubric_marks_input = mi.get("rubric_marks", [])
+                
+                # If rubric marks are provided and rubrics are configured, compute mark_decimal as sum of rubric marks
+                if rubric_marks_input and valid_rubrics:
+                    mark_decimal = Decimal("0.00")
+                    rubric_save_payload = []
+                    
+                    for rmi in rubric_marks_input:
+                        r_name = rmi.get("rubric_name")
+                        if r_name not in valid_rubrics:
+                            raise ValidationError({
+                                "error": f"Invalid rubric criterion '{r_name}' for this sub-sub-event."
+                            })
+                        
+                        r_obj = valid_rubrics[r_name]
+                        r_mark = Decimal(str(rmi.get("mark") or 0))
+                        
+                        if r_mark < 0 or r_mark > r_obj.max_mark:
+                            raise ValidationError({
+                                "error": f"Score {r_mark} for '{r_name}' exceeds the maximum permitted mark of {r_obj.max_mark}."
+                            })
+                        
+                        mark_decimal += r_mark
+                        rubric_save_payload.append((r_obj, r_mark))
+                else:
+                    # Legacy flat grading validation
+                    raw_mark = mi.get("mark")
+                    if raw_mark in (None, ""):
+                        logger.error("Missing mark value for judge '%s' at index %d", judge_name, idx)
+                        raise ValidationError({"marks": {idx - 1: {"mark": "This field is required."}}})
+                    try:
+                        mark_decimal = Decimal(str(raw_mark))
+                    except (InvalidOperation, ValueError, TypeError) as exc:
+                        logger.exception("Invalid mark for judge '%s' at index %d: raw_mark=%r", judge_name, idx, raw_mark)
+                        raise ValidationError({"marks": {idx - 1: {"mark": f"Invalid numeric value: {raw_mark}"}}})
 
                 comments = mi.get("comments", "") or ""
 
@@ -498,6 +553,16 @@ def submit_evaluation_marks(request):
                     mark=mark_decimal,
                     comments=comments,
                 )
+                
+                # save individual rubric marks if using rubric
+                if rubric_marks_input and valid_rubrics:
+                    for rubric_obj, r_mark in rubric_save_payload:
+                        EvaluationJudgeRubricMark.objects.create(
+                            judge_mark=ejm,
+                            rubric=rubric_obj,
+                            mark=r_mark
+                        )
+                
                 created_marks.append({"id": ejm.id, "judge_name": ejm.judge_name, "mark": str(ejm.mark)})
                 logger.info("Created EvaluationJudgeMark id=%s judge=%s mark=%s", ejm.id, ejm.judge_name, ejm.mark)
 

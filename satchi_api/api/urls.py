@@ -11,4 +11,5 @@ urlpatterns = [
     path('event-registrations/<int:event_pk>/<int:project_id>/', views.manage_event_registration),
     path('my-registrations/', views.user_registrations),
     path('statistics/<str:event_id>/', views.get_event_statistics),
+    path('public-stats/', views.get_public_stats),
 ]

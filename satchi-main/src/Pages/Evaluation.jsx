@@ -92,6 +92,7 @@ const EvaluationPage = () => {
     const [subSubEvents, setSubSubEvents] = useState([]);
     const [projects, setProjects] = useState([]);
     const [judges, setJudges] = useState([]); 
+    const [rubrics, setRubrics] = useState([]);
 
     // Selection State
     const [selectedMainEvent, setSelectedMainEvent] = useState('');
@@ -157,15 +158,17 @@ const EvaluationPage = () => {
         if (selectedSubSubEvent) {
             const fetchData = async () => {
                 setLoading(prev => ({ ...prev, projects: true, judges: true }));
-                setProjects([]); setJudges([]); setSelectedProject('');
+                setProjects([]); setJudges([]); setRubrics([]); setSelectedProject('');
                 try {
                     const [projectsRes, judgesRes] = await Promise.all([
                         axios.get(`${API_URL}/eval/get_projects/${selectedSubSubEvent}/`),
                         axios.get(`${API_URL}/eval/subsubevents/${selectedSubSubEvent}/judges/`)
                     ]);
                     setProjects(Array.isArray(projectsRes.data) ? projectsRes.data : []);
-                    const judgesList = judgesRes.data.judges || judgesRes.data || [];
+                    const judgesList = judgesRes.data.judges || [];
                     setJudges(Array.isArray(judgesList) ? judgesList : []);
+                    const rubricsList = judgesRes.data.rubrics || [];
+                    setRubrics(Array.isArray(rubricsList) ? rubricsList : []);
                 } catch (error) { console.error(error); setStatus({ message: 'Error loading data.', type: 'error' }); } 
                 finally { setLoading(prev => ({ ...prev, projects: false, judges: false })); }
             };
@@ -196,7 +199,15 @@ const EvaluationPage = () => {
                 setIsDisqualified(Boolean(evaluation.is_disqualified));
                 setRemarks(evaluation.remarks || '');
                 const loadedScores = {};
-                (evaluation.marks || []).forEach((mark) => { loadedScores[mark.judge_name] = mark.mark; });
+                (evaluation.marks || []).forEach((mark) => {
+                    if (mark.rubric_marks && mark.rubric_marks.length > 0) {
+                        mark.rubric_marks.forEach((rm) => {
+                            loadedScores[`${mark.judge_name}_${rm.rubric_name}`] = rm.mark;
+                        });
+                    } else {
+                        loadedScores[mark.judge_name] = mark.mark;
+                    }
+                });
                 setScores(loadedScores);
             }
         } catch (error) { console.error(error); } 
@@ -218,10 +229,8 @@ const EvaluationPage = () => {
         }));
     };
 
-    const handleScoreChange = (judgeName, value) => {
-        const val = parseFloat(value);
-        if (val < 0) return;
-        setScores(prev => ({ ...prev, [judgeName]: value }));
+    const handleScoreChange = (key, value) => {
+        setScores(prev => ({ ...prev, [key]: value }));
     };
 
     const handleSubmit = async (e) => {
@@ -229,11 +238,49 @@ const EvaluationPage = () => {
         const projectId = parseInt(selectedProject, 10);
         const subSubEventId = parseInt(selectedSubSubEvent, 10);
         
-        const marksPayload = judges.map(judge => ({
-            judge_name: judge.name,
-            mark: scores[judge.name] || "0",
-            comments: ""
-        })).filter(m => m.mark !== "" && m.mark !== null);
+        // Validate rubric max marks on submit
+        if (rubrics && rubrics.length > 0) {
+            for (const judge of judges) {
+                const hasAnyMarks = rubrics.some(rubric => scores[`${judge.name}_${rubric.name}`] !== undefined && scores[`${judge.name}_${rubric.name}`] !== "");
+                if (hasAnyMarks) {
+                    for (const rubric of rubrics) {
+                        const val = parseFloat(scores[`${judge.name}_${rubric.name}`]);
+                        if (isNaN(val) || val < 0 || val > rubric.max_mark) {
+                            setStatus({ message: `Score for ${judge.name} - ${rubric.name} must be between 0 and ${rubric.max_mark}`, type: 'error' });
+                            return;
+                        }
+                    }
+                }
+            }
+        }
+
+        const marksPayload = judges.map(judge => {
+            if (rubrics && rubrics.length > 0) {
+                const rubricMarks = rubrics.map(rubric => ({
+                    rubric_name: rubric.name,
+                    mark: scores[`${judge.name}_${rubric.name}`] || "0"
+                }));
+                const total = rubricMarks.reduce((acc, curr) => acc + parseFloat(curr.mark || 0), 0);
+                return {
+                    judge_name: judge.name,
+                    rubric_marks: rubricMarks,
+                    mark: String(total),
+                    comments: ""
+                };
+            } else {
+                return {
+                    judge_name: judge.name,
+                    mark: scores[judge.name] || "0",
+                    comments: ""
+                };
+            }
+        }).filter(m => {
+            if (rubrics && rubrics.length > 0) {
+                return m.rubric_marks.some(rm => scores[`${m.judge_name}_${rm.rubric_name}`] !== undefined && scores[`${m.judge_name}_${rm.rubric_name}`] !== "");
+            } else {
+                return m.mark !== "" && m.mark !== null;
+            }
+        });
 
         if (marksPayload.length === 0) {
             setStatus({ message: 'Please enter at least one score.', type: 'error' });
@@ -438,21 +485,67 @@ const EvaluationPage = () => {
                                             {/* Judges Grid */}
                                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                                                 {judges.length > 0 ? (
-                                                    judges.map((judge) => (
-                                                        <div key={judge.id || judge.name} className="bg-gray-50/50 p-4 rounded-2xl border border-gray-100 hover:border-orange-200 transition-colors">
-                                                            <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">{judge.name}</label>
-                                                            <div className="relative">
-                                                                <input 
-                                                                    type="number" step="0.01" min="0"
-                                                                    value={scores[judge.name] || ''}
-                                                                    onChange={(e) => handleScoreChange(judge.name, e.target.value)}
-                                                                    placeholder="0.00"
-                                                                    className="w-full text-2xl font-bold bg-transparent border-b-2 border-gray-200 focus:border-[#ff6a3c] outline-none py-1 text-gray-800 placeholder-gray-300 transition-colors"
-                                                                />
-                                                                <span className="absolute right-0 bottom-2 text-xs text-gray-400 font-medium">/ 10</span>
+                                                    judges.map((judge) => {
+                                                        const hasRubrics = rubrics && rubrics.length > 0;
+                                                        const judgeTotal = hasRubrics
+                                                            ? rubrics.reduce((acc, rubric) => acc + parseFloat(scores[`${judge.name}_${rubric.name}`] || 0), 0).toFixed(2)
+                                                            : null;
+                                                        
+                                                        return (
+                                                            <div key={judge.id || judge.name} className="bg-gray-50/50 p-5 rounded-2xl border border-gray-100 hover:border-orange-200 transition-colors space-y-4">
+                                                                <div className="flex justify-between items-center border-b border-gray-100 pb-2">
+                                                                    <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider">{judge.name}</label>
+                                                                    {hasRubrics && (
+                                                                        <span className="text-xs font-bold text-orange-600 bg-orange-50 px-2.5 py-1 rounded-full">
+                                                                            Total: {judgeTotal}
+                                                                        </span>
+                                                                    )}
+                                                                </div>
+                                                                
+                                                                {hasRubrics ? (
+                                                                    <div className="space-y-3">
+                                                                        {rubrics.map((rubric) => {
+                                                                            const scoreKey = `${judge.name}_${rubric.name}`;
+                                                                            const currentVal = scores[scoreKey] || '';
+                                                                            const isOverMax = parseFloat(currentVal) > rubric.max_mark;
+                                                                            
+                                                                            return (
+                                                                                <div key={rubric.id || rubric.name} className="flex flex-col gap-1">
+                                                                                    <div className="flex justify-between text-xs font-semibold text-gray-600">
+                                                                                        <span>{rubric.name}</span>
+                                                                                        <span className="text-gray-400">Max: {rubric.max_mark}</span>
+                                                                                    </div>
+                                                                                    <input 
+                                                                                        type="number" step="0.01" min="0" max={rubric.max_mark}
+                                                                                        value={currentVal}
+                                                                                        onChange={(e) => handleScoreChange(scoreKey, e.target.value)}
+                                                                                        placeholder="0.00"
+                                                                                        className={`w-full text-base font-bold bg-transparent border-b-2 outline-none py-1 text-gray-800 placeholder-gray-300 transition-colors ${
+                                                                                            isOverMax ? 'border-red-300 focus:border-red-500 text-red-600' : 'border-gray-200 focus:border-[#ff6a3c]'
+                                                                                        }`}
+                                                                                    />
+                                                                                    {isOverMax && (
+                                                                                        <span className="text-[10px] text-red-500 font-medium">Exceeds maximum score of {rubric.max_mark}</span>
+                                                                                    )}
+                                                                                </div>
+                                                                            );
+                                                                        })}
+                                                                    </div>
+                                                                ) : (
+                                                                    <div className="relative">
+                                                                        <input 
+                                                                            type="number" step="0.01" min="0"
+                                                                            value={scores[judge.name] || ''}
+                                                                            onChange={(e) => handleScoreChange(judge.name, e.target.value)}
+                                                                            placeholder="0.00"
+                                                                            className="w-full text-2xl font-bold bg-transparent border-b-2 border-gray-200 focus:border-[#ff6a3c] outline-none py-1 text-gray-800 placeholder-gray-300 transition-colors"
+                                                                        />
+                                                                        <span className="absolute right-0 bottom-2 text-xs text-gray-400 font-medium">/ 10</span>
+                                                                    </div>
+                                                                )}
                                                             </div>
-                                                        </div>
-                                                    ))
+                                                        );
+                                                    })
                                                 ) : (
                                                     <div className="col-span-full p-4 bg-red-50 text-red-600 rounded-xl text-sm font-semibold text-center border border-red-100">
                                                         Configuration Error: No judges assigned to this competition.

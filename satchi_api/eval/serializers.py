@@ -1,7 +1,7 @@
 from rest_framework import serializers
 from decimal import Decimal
 from events.models import SubSubEvent
-from .models import SubSubEventJudge, Evaluation, EvaluationJudgeMark
+from .models import SubSubEventJudge, Evaluation, EvaluationJudgeMark, Rubric, EvaluationJudgeRubricMark
 from api.models import Project
 
 
@@ -11,13 +11,19 @@ class SubSubEventJudgeSerializer(serializers.ModelSerializer):
         fields = ("id", "subsubevent", "name", "order")
 
 
+class RubricInputSerializer(serializers.Serializer):
+    name = serializers.CharField(max_length=200)
+    max_mark = serializers.DecimalField(max_digits=5, decimal_places=2)
+
+
 class CreateJudgesSerializer(serializers.Serializer):
     """
     Input for linking judges to a subsubevent:
-    { "subsubevent_id": 5, "names": ["Judge A", "Judge B"], "replace": true }
+    { "subsubevent_id": 5, "names": ["Judge A", "Judge B"], "replace": true, "rubrics": [{"name": "Innovation", "max_mark": 10}] }
     """
     subsubevent_id = serializers.IntegerField()
     names = serializers.ListField(child=serializers.CharField(max_length=200))
+    rubrics = serializers.ListField(child=RubricInputSerializer(), required=False, default=list)
     replace = serializers.BooleanField(default=False)
 
     def validate_subsubevent_id(self, v):
@@ -32,10 +38,16 @@ class JudgeListResponseSerializer(serializers.Serializer):
     order = serializers.IntegerField()
 
 
+class EvaluationJudgeRubricMarkInputSerializer(serializers.Serializer):
+    rubric_name = serializers.CharField(max_length=200)
+    mark = serializers.DecimalField(max_digits=5, decimal_places=2)
+
+
 class EvaluationJudgeMarkInputSerializer(serializers.Serializer):
     judge_name = serializers.CharField()
-    mark = serializers.DecimalField(max_digits=7, decimal_places=2)
+    mark = serializers.DecimalField(max_digits=7, decimal_places=2, required=False, allow_null=True)
     comments = serializers.CharField(required=False, allow_blank=True, allow_null=True)
+    rubric_marks = serializers.ListField(child=EvaluationJudgeRubricMarkInputSerializer(), required=False, default=list)
 
 
 class CreateEvaluationSerializer(serializers.Serializer):

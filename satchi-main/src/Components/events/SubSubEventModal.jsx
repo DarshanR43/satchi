@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Trophy, ArrowRight, Bell, Info } from 'lucide-react';
+import { X, Trophy, ArrowRight, Bell, Info, Check } from 'lucide-react';
 
 const SubSubEventModal = ({ subEvent, isOpen, onClose, onRegister }) => {
   if (!isOpen || !subEvent) return null;
@@ -58,6 +58,7 @@ const SubSubEventModal = ({ subEvent, isOpen, onClose, onRegister }) => {
             <div className="space-y-3">
               {subEvent.subSubEvents && subEvent.subSubEvents.length > 0 ? (
                 subEvent.subSubEvents.map((ssEvent) => {
+                  const isAlreadyRegistered = !!ssEvent.isRegistered;
                   const isRegistrationOpen = subEvent.isOpen && ssEvent.isOpen;
                   return (
                     <motion.div 
@@ -79,15 +80,21 @@ const SubSubEventModal = ({ subEvent, isOpen, onClose, onRegister }) => {
                           {isRegistrationOpen ? 'OPEN' : 'CLOSED'}
                         </span>
                         <button 
-                          onClick={() => onRegister(ssEvent)} 
-                          disabled={!isRegistrationOpen} 
+                          onClick={() => !isAlreadyRegistered && onRegister(ssEvent)} 
+                          disabled={!isRegistrationOpen || isAlreadyRegistered} 
                           className={`flex-1 md:flex-none px-6 py-2.5 rounded-xl text-sm font-bold flex items-center justify-center gap-2 transition-all ${
-                            isRegistrationOpen 
-                              ? 'bg-gray-900 text-white hover:bg-[#ff6a3c] shadow-sm' 
-                              : 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                            isAlreadyRegistered
+                              ? 'bg-green-100 text-green-700 border border-green-200 cursor-default'
+                              : isRegistrationOpen 
+                                ? 'bg-gray-900 text-white hover:bg-[#ff6a3c] shadow-sm' 
+                                : 'bg-gray-100 text-gray-400 cursor-not-allowed'
                           }`}
                         >
-                          Register <ArrowRight size={16} />
+                          {isAlreadyRegistered ? (
+                            <>Registered <Check size={16} /></>
+                          ) : (
+                            <>Register <ArrowRight size={16} /></>
+                          )}
                         </button>
                       </div>
                     </motion.div>

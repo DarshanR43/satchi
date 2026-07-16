@@ -15,6 +15,8 @@ import Statistics from "./Pages/Statistics";
 import UserManagementPage from "./Pages/UserManagement";
 import ManualTeamEntryPage from "./Pages/ManualTeamEntry";
 import TeamManagementPage from "./Pages/TeamManagement";
+import PrivacyPolicy from "./Pages/PrivacyPolicy";
+import TermsAndConditions from "./Pages/TermsAndConditions";
 
 const App = () => {
   return (
@@ -31,15 +33,13 @@ const App = () => {
             <Route path="admin/events/:eventId/teams" element={<TeamManagementPage />} />
             <Route path="login" element={<Login />} />
             <Route path="evaluate" element={<EvaluationPage />} />
-            {/* --- UPDATED ROUTES --- */}
-            {/* Route for generic registration */}
             <Route path="register" element={<Registration />} />
-            {/* Route for registration to a specific event */}
             <Route path="register/:eventId" element={<Registration />} />
-
             <Route path="signup" element={<Signup />} />
             <Route path="profile" element={<ProfilePage />} />
             <Route path="statistics/:eventId" element={<Statistics />} />
+            <Route path="privacy-policy" element={<PrivacyPolicy />} />
+            <Route path="terms" element={<TermsAndConditions />} />
           </Routes>
         </main>
         <Footer />

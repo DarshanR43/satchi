@@ -42,9 +42,11 @@ const ProfilePage = () => {
   const [registrationsLoading, setRegistrationsLoading] = useState(true);
   const [registrationsError, setRegistrationsError] = useState(null);
 
+  const isSuperAdmin = user && (user.role === "SUPERADMIN" || user.is_superuser);
+
   useEffect(() => {
     const fetchRegistrations = async () => {
-      if (!isAuthenticated) {
+      if (!isAuthenticated || isSuperAdmin) {
         setRegistrationsLoading(false);
         return;
       }
@@ -61,7 +63,7 @@ const ProfilePage = () => {
     };
 
     fetchRegistrations();
-  }, [isAuthenticated]);
+  }, [isAuthenticated, isSuperAdmin]);
 
   const formatDateTime = (isoString) => {
     if (!isoString) return "Unknown";
@@ -215,39 +217,41 @@ const ProfilePage = () => {
           </div>
         </motion.div>
 
-        <motion.div
-          initial={{ opacity: 0, scale: 0.95 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ duration: 0.5, delay: 0.3 }}
-          className="mt-10 rounded-2xl border border-gray-200/90 bg-white/80 p-6 shadow-xl backdrop-blur-lg sm:p-8"
-        >
-          <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
-            <h2 className="text-2xl font-bold text-gray-800">Your Registered Events</h2>
-            <span className="text-sm text-gray-500">{registrations.length} registrations</span>
-          </div>
-
-          {registrationsLoading && <p className="text-sm text-gray-500">Fetching your registrations...</p>}
-
-          {!registrationsLoading && registrationsError && (
-            <div className="rounded-lg border border-red-300 bg-red-100 p-3 text-sm text-red-700">
-              {registrationsError}
+        {!isSuperAdmin && (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ duration: 0.5, delay: 0.3 }}
+            className="mt-10 rounded-2xl border border-gray-200/90 bg-white/80 p-6 shadow-xl backdrop-blur-lg sm:p-8"
+          >
+            <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
+              <h2 className="text-2xl font-bold text-gray-800">Your Registered Events</h2>
+              <span className="text-sm text-gray-500">{registrations.length} registrations</span>
             </div>
-          )}
 
-          {!registrationsLoading && !registrationsError && registrations.length === 0 && (
-            <p className="text-sm text-gray-500">
-              You have not registered for any events yet. Head to the events page to explore opportunities.
-            </p>
-          )}
+            {registrationsLoading && <p className="text-sm text-gray-500">Fetching your registrations...</p>}
 
-          {!registrationsLoading && !registrationsError && registrations.length > 0 && (
-            <div className="grid grid-cols-1 gap-4">
-              {registrations.map((registration) => (
-                <RegistrationCard key={`${registration.projectId}-${registration.role}`} registration={registration} />
-              ))}
-            </div>
-          )}
-        </motion.div>
+            {!registrationsLoading && registrationsError && (
+              <div className="rounded-lg border border-red-300 bg-red-100 p-3 text-sm text-red-700">
+                {registrationsError}
+              </div>
+            )}
+
+            {!registrationsLoading && !registrationsError && registrations.length === 0 && (
+              <p className="text-sm text-gray-500">
+                You have not registered for any events yet. Head to the events page to explore opportunities.
+              </p>
+            )}
+
+            {!registrationsLoading && !registrationsError && registrations.length > 0 && (
+              <div className="grid grid-cols-1 gap-4">
+                {registrations.map((registration) => (
+                  <RegistrationCard key={`${registration.projectId}-${registration.role}`} registration={registration} />
+                ))}
+              </div>
+            )}
+          </motion.div>
+        )}
       </div>
     </div>
   );

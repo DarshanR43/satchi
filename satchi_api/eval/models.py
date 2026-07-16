@@ -129,3 +129,45 @@ class EvaluationJudgeMark(models.Model):
 
     def __str__(self):
         return f"{self.judge_name}: {self.mark} for {self.evaluation}"
+
+
+class Rubric(models.Model):
+    """
+    Scoring criteria (rubrics) defined for a SubSubEvent.
+    """
+    subsubevent = models.ForeignKey(
+        SubSubEvent, on_delete=models.CASCADE, related_name="rubrics"
+    )
+    name = models.CharField(max_length=200)
+    max_mark = models.DecimalField(
+        max_digits=5, decimal_places=2, default=Decimal("10.00"),
+        validators=[MinValueValidator(Decimal("0.01"))]
+    )
+
+    class Meta:
+        unique_together = ("subsubevent", "name")
+
+    def __str__(self):
+        return f"{self.name} (max {self.max_mark}) for {self.subsubevent}"
+
+
+class EvaluationJudgeRubricMark(models.Model):
+    """
+    Score given by a judge for a specific rubric in an Evaluation.
+    """
+    judge_mark = models.ForeignKey(
+        EvaluationJudgeMark, on_delete=models.CASCADE, related_name="rubric_marks"
+    )
+    rubric = models.ForeignKey(
+        Rubric, on_delete=models.CASCADE, related_name="evaluation_marks"
+    )
+    mark = models.DecimalField(
+        max_digits=5, decimal_places=2,
+        validators=[MinValueValidator(Decimal("0.00"))]
+    )
+
+    class Meta:
+        unique_together = ("judge_mark", "rubric")
+
+    def __str__(self):
+        return f"{self.rubric.name}: {self.mark} (judge: {self.judge_mark.judge_name})"

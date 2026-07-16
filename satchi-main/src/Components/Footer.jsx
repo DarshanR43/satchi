@@ -1,4 +1,5 @@
-import React from "react";
+import React, { useEffect } from "react";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 
 const GithubIcon = () => (
   <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -22,6 +23,13 @@ const InstagramIcon = () => (
   </svg>
 );
 
+const YoutubeIcon = () => (
+  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M22.54 6.42a2.78 2.78 0 0 0-1.94-2C18.88 4 12 4 12 4s-6.88 0-8.6.46a2.78 2.78 0 0 0-1.94 2A29 29 0 0 0 1 11.75a29 29 0 0 0 .46 5.33A2.78 2.78 0 0 0 3.4 19c1.72.46 8.6.46 8.6.46s6.88 0 8.6-.46a2.78 2.78 0 0 0 1.94-2 29 29 0 0 0 .46-5.25 29 29 0 0 0-.46-5.33z"></path>
+    <polygon points="9.75 15.02 15.5 11.75 9.75 8.48 9.75 15.02"></polygon>
+  </svg>
+);
+
 const ArrowUpIcon = () => (
    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
     <line x1="12" y1="19" x2="12" y2="5"></line>
@@ -31,6 +39,8 @@ const ArrowUpIcon = () => (
 
 
 const Footer = () => {
+  const navigate = useNavigate();
+  const location = useLocation();
 
   const scrollToTop = () => {
     window.scrollTo({
@@ -38,6 +48,32 @@ const Footer = () => {
       behavior: "smooth",
     });
   };
+
+  const handleAboutClick = (e) => {
+    e.preventDefault();
+    if (location.pathname === "/") {
+      const element = document.getElementById("about");
+      if (element) {
+        element.scrollIntoView({ behavior: "smooth" });
+      }
+    } else {
+      navigate("/", { state: { scrollToAbout: true } });
+    }
+  };
+
+  useEffect(() => {
+    if (location.pathname === "/" && location.state?.scrollToAbout) {
+      // Clear location state so that it doesn't scroll again on page refresh
+      navigate("/", { replace: true, state: {} });
+      // Use setTimeout to ensure the DOM is fully rendered before scrolling
+      setTimeout(() => {
+        const element = document.getElementById("about");
+        if (element) {
+          element.scrollIntoView({ behavior: "smooth" });
+        }
+      }, 100);
+    }
+  }, [location.pathname, location.state, navigate]);
 
   return (
     // Added 'z-0' here to prevent footer from overlapping higher z-index modals
@@ -59,35 +95,47 @@ const Footer = () => {
           <div>
             <h4 className="text-lg font-semibold mb-4 text-[#df9400]">Quick Links</h4>
             <ul className="space-y-2 text-gray-600">
-              <li><a href="/" className="hover:text-[#ff6a3c] transition-colors">Home</a></li>
-              <li><a href="#about" className="hover:text-[#ff6a3c] transition-colors">About</a></li>
-              <li><a href="/events" className="hover:text-[#ff6a3c] transition-colors">Events</a></li>
-              <li><a href="/register" className="hover:text-[#ff6a3c] transition-colors">Register</a></li>
+              <li><Link to="/" className="hover:text-[#ff6a3c] transition-colors">Home</Link></li>
+              <li>
+                <a 
+                  href="/#about" 
+                  onClick={handleAboutClick} 
+                  className="hover:text-[#ff6a3c] transition-colors"
+                >
+                  About
+                </a>
+              </li>
+              <li><Link to="/events" className="hover:text-[#ff6a3c] transition-colors">Events</Link></li>
+              {/* <li><a href="/register" className="hover:text-[#ff6a3c] transition-colors">Register</a></li> */}
+              <li><Link to="/privacy-policy" className="hover:text-[#ff6a3c] transition-colors">Privacy Policy</Link></li>
+              <li><Link to="/terms" className="hover:text-[#ff6a3c] transition-colors">Terms & Conditions</Link></li>
             </ul>
           </div>
 
           <div>
             <h4 className="text-lg font-semibold mb-4 text-[#df9400]">Venue</h4>
             <p className="text-gray-600 leading-relaxed">
-              Amrita Vishwa Vidyapeetham <br />
-              Amrita Nagar, Ettimadai, <br />
-              Coimbatore, Tamil Nadu - 641112
+              A - 405, Academic Block - 3, <br />
+              Institutions Innovation Council (IIC), <br />
+              Amrita Vishwa Vidhyapeetham, <br />
+              Ettimadai, Coimbatore - 641112
             </p>
           </div>
 
           <div>
             <h4 className="text-lg font-semibold mb-4 text-[#df9400]">Follow Us</h4>
             <div className="flex space-x-4">
-              <a href="#" aria-label="Github" className="text-gray-500 hover:text-[#ff6a3c] transition-colors"><GithubIcon /></a>
-              <a href="#" aria-label="LinkedIn" className="text-gray-500 hover:text-[#ff6a3c] transition-colors"><LinkedinIcon /></a>
-              <a href="#" aria-label="Instagram" className="text-gray-500 hover:text-[#ff6a3c] transition-colors"><InstagramIcon /></a>
+              <a href="https://github.com/AVV-IIC" target="_blank" rel="noopener noreferrer" aria-label="Github" className="text-gray-500 hover:text-[#ff6a3c] transition-colors"><GithubIcon /></a>
+              <a href="https://www.linkedin.com/company/iicamrita/" target="_blank" rel="noopener noreferrer" aria-label="LinkedIn" className="text-gray-500 hover:text-[#ff6a3c] transition-colors"><LinkedinIcon /></a>
+              <a href="https://www.instagram.com/iic.amrita/" target="_blank" rel="noopener noreferrer" aria-label="Instagram" className="text-gray-500 hover:text-[#ff6a3c] transition-colors"><InstagramIcon /></a>
+              <a href="https://www.youtube.com/@iic.amrita" target="_blank" rel="noopener noreferrer" aria-label="YouTube" className="text-gray-500 hover:text-[#ff6a3c] transition-colors"><YoutubeIcon /></a>
             </div>
           </div>
         </div>
 
         <div className="mt-16 pt-8 border-t border-gray-200/80 flex flex-col items-center text-center">
           <p className="text-sm text-gray-500">
-            2025-2026 GYAN, All Rights Reserved.
+            ©2026 GYAN - IIC, Amrita Vishwa Vidhyapeetham, Coimbatore. All Rights Reserved
           </p>
         </div>
       </div>

@@ -274,6 +274,9 @@ const ManageRolesModal = ({ isOpen, onClose, onSave, event, eventLevel, api }) =
 const ManageJudgesModal = ({ isOpen, onClose, onSave, event, api }) => {
   const [judges, setJudges] = useState([]);
   const [newJudgeName, setNewJudgeName] = useState('');
+  const [rubrics, setRubrics] = useState([]);
+  const [newRubricName, setNewRubricName] = useState('');
+  const [newRubricMaxMark, setNewRubricMaxMark] = useState('10');
   const [hasExistingJudges, setHasExistingJudges] = useState(false);
 
   useEffect(() => {
@@ -284,7 +287,10 @@ const ManageJudgesModal = ({ isOpen, onClose, onSave, event, api }) => {
           const data = response.data.judges || response.data || [];
           const list = Array.isArray(data) ? data : [];
           setJudges(list); setHasExistingJudges(list.length > 0);
-        } catch (error) { console.error(error); setJudges([]); }
+          
+          const rubricsData = response.data.rubrics || [];
+          setRubrics(Array.isArray(rubricsData) ? rubricsData : []);
+        } catch (error) { console.error(error); setJudges([]); setRubrics([]); }
       };
       fetchJudges();
     }
@@ -295,30 +301,67 @@ const ManageJudgesModal = ({ isOpen, onClose, onSave, event, api }) => {
   const handleAddJudge = () => { if (newJudgeName.trim()) { setJudges([...judges, { name: newJudgeName.trim(), id: Date.now() }]); setNewJudgeName(''); } };
   const handleRemoveJudge = (id) => setJudges(judges.filter(j => j.id !== id && j.name !== id));
 
+  const handleAddRubric = () => {
+    if (newRubricName.trim() && newRubricMaxMark) {
+      const maxVal = parseFloat(newRubricMaxMark);
+      if (isNaN(maxVal) || maxVal <= 0) {
+        return alert("Please enter a valid max mark.");
+      }
+      setRubrics([...rubrics, { name: newRubricName.trim(), max_mark: maxVal, id: Date.now() }]);
+      setNewRubricName('');
+      setNewRubricMaxMark('10');
+    }
+  };
+  const handleRemoveRubric = (id) => setRubrics(rubrics.filter(r => r.id !== id && r.name !== id));
+
   return (
     <motion.div className="fixed inset-0 bg-gray-900/60 backdrop-blur-sm flex items-center justify-center z-50 p-4" onClick={onClose}>
       <motion.div initial={{ scale: 0.9, y: 50 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.9, y: -50 }} className="bg-white rounded-2xl w-full max-w-md mx-auto shadow-xl flex flex-col max-h-[90vh]" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center justify-between p-5 border-b border-gray-200 shrink-0">
-          <h2 className="text-xl font-bold text-gray-800 truncate pr-4">Judges: <span className="text-[#ff6a3c]">{event.name}</span></h2>
+          <h2 className="text-xl font-bold text-gray-800 truncate pr-4">Configure Event: <span className="text-[#ff6a3c]">{event.name}</span></h2>
           <button type="button" onClick={onClose} className="p-2 rounded-full hover:bg-gray-100 shrink-0"><X size={24} className="text-gray-500" /></button>
         </div>
-        <div className="p-6 space-y-4 overflow-y-auto custom-scrollbar flex-1">
-          <div className="space-y-2 max-h-64 overflow-y-auto">
-            {judges.map((judge, idx) => (
-              <div key={judge.id || idx} className="flex items-center justify-between bg-gray-100 p-3 rounded-lg border border-gray-200">
-                <span className="font-semibold text-gray-700 truncate">{judge.name}</span>
-                <button onClick={() => handleRemoveJudge(judge.id || judge.name)} className="text-red-500 hover:bg-red-100 p-1 rounded-full shrink-0"><X size={16} /></button>
-              </div>
-            ))}
-            {judges.length === 0 && <p className="text-gray-500 text-center italic text-sm">No judges added yet.</p>}
+        <div className="p-6 space-y-5 overflow-y-auto custom-scrollbar flex-1">
+          {/* Judges Section */}
+          <div>
+            <h3 className="text-sm font-bold text-gray-700 mb-2">Judges</h3>
+            <div className="space-y-2 max-h-40 overflow-y-auto mb-2 custom-scrollbar">
+              {judges.map((judge, idx) => (
+                <div key={judge.id || idx} className="flex items-center justify-between bg-gray-100 p-2.5 rounded-lg border border-gray-200">
+                  <span className="font-semibold text-gray-700 text-sm truncate">{judge.name}</span>
+                  <button onClick={() => handleRemoveJudge(judge.id || judge.name)} className="text-red-500 hover:bg-red-100 p-1 rounded-full shrink-0"><X size={14} /></button>
+                </div>
+              ))}
+              {judges.length === 0 && <p className="text-gray-400 text-center italic text-xs">No judges added yet.</p>}
+            </div>
+            <div className="flex gap-2">
+              <input type="text" value={newJudgeName} onChange={(e) => setNewJudgeName(e.target.value)} placeholder="Judge name..." className="flex-1 p-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#ff6a3c] outline-none bg-gray-50 text-gray-800" onKeyDown={(e) => e.key === 'Enter' && handleAddJudge()} />
+              <button onClick={handleAddJudge} className="bg-gray-800 text-white px-3 py-2 text-sm rounded-lg hover:bg-gray-900 font-semibold transition">Add</button>
+            </div>
           </div>
-          <div className="flex flex-col sm:flex-row gap-2 pt-2 border-t border-gray-100">
-            <input type="text" value={newJudgeName} onChange={(e) => setNewJudgeName(e.target.value)} placeholder="Judge name..." className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#ff6a3c] outline-none bg-gray-50 text-gray-800" onKeyDown={(e) => e.key === 'Enter' && handleAddJudge()} />
-            <button onClick={handleAddJudge} className="w-full sm:w-auto bg-gray-800 text-white px-4 py-2 rounded-lg hover:bg-gray-900 font-semibold transition">Add</button>
+
+          {/* Rubrics Section */}
+          <div className="pt-4 border-t border-gray-200">
+            <h3 className="text-sm font-bold text-gray-700 mb-2">Rubrics (Criteria & Max Marks)</h3>
+            <div className="space-y-2 max-h-40 overflow-y-auto mb-2 custom-scrollbar">
+              {rubrics.map((rubric, idx) => (
+                <div key={rubric.id || idx} className="flex items-center justify-between bg-orange-50 p-2.5 rounded-lg border border-orange-100">
+                  <span className="font-semibold text-gray-700 text-sm truncate">{rubric.name}</span>
+                  <span className="text-xs font-bold text-orange-600 bg-orange-100 px-2.5 py-0.5 rounded-full shrink-0">Max: {rubric.max_mark}</span>
+                  <button onClick={() => handleRemoveRubric(rubric.id || rubric.name)} className="text-red-500 hover:bg-red-100 p-1 rounded-full shrink-0 ml-2"><X size={14} /></button>
+                </div>
+              ))}
+              {rubrics.length === 0 && <p className="text-gray-400 text-center italic text-xs">No rubrics added yet (Legacy Flat Grading will be used).</p>}
+            </div>
+            <div className="flex gap-2">
+              <input type="text" value={newRubricName} onChange={(e) => setNewRubricName(e.target.value)} placeholder="Criterion (e.g. Presentation)..." className="flex-1 p-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#ff6a3c] outline-none bg-gray-50 text-gray-800" onKeyDown={(e) => e.key === 'Enter' && handleAddRubric()} />
+              <input type="number" min="1" step="1" value={newRubricMaxMark} onChange={(e) => setNewRubricMaxMark(e.target.value)} placeholder="Max mark..." className="w-20 p-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#ff6a3c] outline-none bg-gray-50 text-gray-800" onKeyDown={(e) => e.key === 'Enter' && handleAddRubric()} />
+              <button onClick={handleAddRubric} className="bg-gray-800 text-white px-3 py-2 text-sm rounded-lg hover:bg-gray-900 font-semibold transition">Add</button>
+            </div>
           </div>
         </div>
         <div className="p-4 bg-gray-50 border-t border-gray-200 flex justify-end shrink-0">
-          <button onClick={() => { if (judges.length < 1) return alert("Add at least one judge."); onSave(event.id, judges.map(j => j.name), hasExistingJudges); }} className="w-full sm:w-auto px-6 py-2 rounded-lg bg-[#ff6a3c] text-white font-bold hover:shadow-lg hover:shadow-orange-500/50 transition">Save Judges</button>
+          <button onClick={() => { if (judges.length < 1) return alert("Add at least one judge."); onSave(event.id, judges.map(j => j.name), rubrics, hasExistingJudges); }} className="w-full sm:w-auto px-6 py-2 rounded-lg bg-[#ff6a3c] text-white font-bold hover:shadow-lg hover:shadow-orange-500/50 transition">Save Setup</button>
         </div>
       </motion.div>
     </motion.div>
@@ -537,9 +580,17 @@ const AdminPage = () => {
     catch (error) { console.error(error); alert('Save roles failed.'); }
   };
 
-  const handleSaveJudges = async (eventId, judgeNames, replace) => {
-    try { await api.post(`/eval/subsubevents/judges/link/`, { subsubevent_id: eventId, names: judgeNames, replace }); setIsJudgesModalOpen(false); }
-    catch (error) { console.error(error); alert('Save judges failed.'); }
+  const handleSaveJudges = async (eventId, judgeNames, rubricsList, replace) => {
+    try {
+      await api.post(`/eval/subsubevents/judges/link/`, {
+        subsubevent_id: eventId,
+        names: judgeNames,
+        rubrics: rubricsList.map(r => ({ name: r.name, max_mark: parseFloat(r.max_mark) })),
+        replace
+      });
+      setIsJudgesModalOpen(false);
+    }
+    catch (error) { console.error(error); alert('Save judges and rubrics failed.'); }
   };
 
   const handleToggleStatus = async (eventId, level, allowed = true) => {

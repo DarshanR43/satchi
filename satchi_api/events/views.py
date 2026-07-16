@@ -1,7 +1,7 @@
 from collections import defaultdict
 
 from django.db import transaction
-from django.db.models import Prefetch
+from django.db.models import Prefetch, Q
 from django.shortcuts import get_object_or_404
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated, IsAuthenticatedOrReadOnly
@@ -264,6 +264,19 @@ def get_events(request):
     mainEvents = MainEvent.objects.all()
     respData = []
 
+    registered_subsubevent_ids = set()
+    user = request.user
+    if user and user.is_authenticated:
+        email = (user.email or "").strip().lower()
+        registered_subsubevent_ids = set(
+            Project.objects.filter(
+                Q(captain_user=user)
+                | Q(captain_email__iexact=email)
+                | Q(members__user=user)
+                | Q(members__email__iexact=email)
+            ).values_list('event_id', flat=True)
+        )
+
     for mainEvent in mainEvents:
         subEventsData = []
         subEvents = SubEvent.objects.filter(parent_event=mainEvent)
@@ -284,6 +297,7 @@ def get_events(request):
                     "minFemaleParticipants": ssEvent.minFemaleParticipants,
                     "isFacultyMentorRequired": ssEvent.isFacultyMentorRequired,
                     "isOpen": getattr(ssEvent, "isOpen", True), 
+                    "isRegistered": ssEvent.id in registered_subsubevent_ids,
                 })
 
             subEventsData.append({
