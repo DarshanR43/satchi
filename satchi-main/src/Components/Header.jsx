@@ -86,23 +86,23 @@ const Header = () => {
       <div
         className={`w-[95%] max-w-7xl mx-auto mt-4 rounded-2xl px-4 sm:px-6 py-3 transition-all duration-300 flex items-center justify-between ${headerContainerClasses}`}
       >
-        <Link to="/" className="flex items-center gap-2.5 sm:gap-4 md:gap-5 flex-shrink-0">
+        <Link to="/" className="flex items-center gap-2 sm:gap-3 md:gap-4 flex-shrink-0">
           <img 
             src="/images/Amrita_Logo.png" 
             alt="Amrita Vishwa Vidyapeetham" 
-            className="h-8 sm:h-10 md:h-12 lg:h-14 w-auto object-contain" 
+            className="h-[24px] sm:h-[32px] md:h-[38px] lg:h-[44px] w-auto object-contain" 
           />
-          <div className="h-6 sm:h-8 lg:h-9 w-px bg-gray-300/80" />
+          <div className="h-3.5 sm:h-5 md:h-6 lg:h-7 w-px bg-gray-300/80" />
           <img 
             src="/images/IIC_Logo.png" 
             alt="Institution's Innovation Council" 
-            className="h-8 sm:h-10 md:h-12 lg:h-14 w-auto object-contain" 
+            className="h-[24px] sm:h-[32px] md:h-[38px] lg:h-[44px] w-auto object-contain" 
           />
-          <div className="h-6 sm:h-8 lg:h-9 w-px bg-gray-300/80" />
+          <div className="h-3.5 sm:h-5 md:h-6 lg:h-7 w-px bg-gray-300/80" />
           <img 
             src="/images/gyan_main_logo.png" 
             alt="GYAN Logo" 
-            className="h-7 sm:h-9 md:h-11 lg:h-13 w-auto object-contain" 
+            className="h-[20px] sm:h-[26px] md:h-[30px] lg:h-[34px] w-auto object-contain" 
           />
         </Link>
         
