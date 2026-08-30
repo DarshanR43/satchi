@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { NavLink, useLocation, useNavigate } from "react-router-dom";
+import { Link, NavLink, useLocation, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { useAuth } from "../context/AuthContext";
 
@@ -84,15 +84,27 @@ const Header = () => {
       className="fixed top-0 left-0 right-0 z-50 font-body"
     >
       <div
-        className={`w-[95%] max-w-7xl mx-auto mt-4 rounded-2xl px-6 py-3 transition-all duration-300 flex items-center justify-between ${headerContainerClasses}`}
+        className={`w-[95%] max-w-7xl mx-auto mt-4 rounded-2xl px-4 sm:px-6 py-3 transition-all duration-300 flex items-center justify-between ${headerContainerClasses}`}
       >
-        <a href="/">
+        <Link to="/" className="flex items-center gap-2 sm:gap-3 md:gap-4 flex-shrink-0">
+          <img 
+            src="/images/Amrita_Logo.png" 
+            alt="Amrita Vishwa Vidyapeetham" 
+            className="h-6 sm:h-8 w-auto object-contain" 
+          />
+          <div className="h-4 sm:h-6 w-px bg-gray-300/80" />
+          <img 
+            src="/images/IIC_Logo.png" 
+            alt="Institution's Innovation Council" 
+            className="h-6 sm:h-8 w-auto object-contain" 
+          />
+          <div className="h-4 sm:h-6 w-px bg-gray-300/80" />
           <img 
             src="/images/gyan_main_logo.png" 
             alt="GYAN Logo" 
-            className="h-8" 
+            className="h-6 sm:h-8 w-auto object-contain" 
           />
-        </a>
+        </Link>
         
         <ul className="hidden lg:flex items-center gap-2 text-sm font-semibold">
           {menuItems.map((item) => (
