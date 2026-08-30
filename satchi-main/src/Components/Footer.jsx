@@ -112,7 +112,7 @@ const Footer = () => {
             </ul>
           </div>
 
-          <div>
+          {/* <div>
             <h4 className="text-lg font-semibold mb-4 text-[#df9400]">Venue</h4>
             <p className="text-gray-600 leading-relaxed">
               A - 405, Academic Block - 3, <br />
@@ -120,7 +120,7 @@ const Footer = () => {
               Amrita Vishwa Vidhyapeetham, <br />
               Ettimadai, Coimbatore - 641112
             </p>
-          </div>
+          </div> */}
 
           <div>
             <h4 className="text-lg font-semibold mb-4 text-[#df9400]">Follow Us</h4>
