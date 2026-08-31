@@ -100,9 +100,9 @@ const Header = () => {
           />
           <div className="h-3.5 sm:h-5 md:h-6 lg:h-7 w-px bg-gray-300/80" />
           <img 
-            src="/images/gyan_main_logo.png" 
+            src="/images/GYAN_updated_logo_v2.png" 
             alt="GYAN Logo" 
-            className="h-[20px] sm:h-[26px] md:h-[30px] lg:h-[34px] w-auto object-contain" 
+            className="h-[28px] sm:h-[36px] md:h-[44px] lg:h-[48px] w-auto object-contain" 
           />
         </Link>
         
