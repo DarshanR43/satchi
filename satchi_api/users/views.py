@@ -218,6 +218,7 @@ def update_managed_user(request, user_id):
         if 'role' in request.data
         else target_user.role
     )
+
     if role not in User.Role.values:
         return Response({"error": "Invalid role selected."}, status=status.HTTP_400_BAD_REQUEST)
 
@@ -316,3 +317,68 @@ def update_managed_user(request, user_id):
         },
         status=status.HTTP_200_OK,
     )
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def bulk_delete_users(request):
+    if not _is_superadmin(request.user):
+        return Response({"error": "Superadmin access required."}, status=status.HTTP_403_FORBIDDEN)
+
+    user_ids = request.data.get('user_ids')
+    role = request.data.get('role')
+    delete_all_role = request.data.get('delete_all_role')
+
+    target_qs = User.objects.all()
+
+    if delete_all_role:
+        role_to_match = str(delete_all_role).strip().upper()
+        if role_to_match not in User.Role.values:
+            return Response({"error": f"Invalid role: {delete_all_role}"}, status=status.HTTP_400_BAD_REQUEST)
+        target_qs = target_qs.filter(role=role_to_match)
+    elif user_ids is not None:
+        if not isinstance(user_ids, list) or len(user_ids) == 0:
+            return Response({"error": "user_ids must be a non-empty list."}, status=status.HTTP_400_BAD_REQUEST)
+        try:
+            user_ids = [int(uid) for uid in user_ids]
+        except (ValueError, TypeError):
+            return Response({"error": "Invalid user IDs provided."}, status=status.HTTP_400_BAD_REQUEST)
+        target_qs = target_qs.filter(id__in=user_ids)
+        if role:
+            role_to_match = str(role).strip().upper()
+            if role_to_match in User.Role.values:
+                target_qs = target_qs.filter(role=role_to_match)
+    else:
+        return Response(
+            {"error": "Please provide user_ids or delete_all_role."},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    # Exclude active superadmin from deletion
+    target_qs = target_qs.exclude(pk=request.user.pk)
+
+    # Check if deleting these users would wipe out all superadmins
+    superadmin_targets_count = target_qs.filter(role=User.Role.SUPERADMIN).count()
+    if superadmin_targets_count > 0:
+        remaining_superadmins = User.objects.filter(role=User.Role.SUPERADMIN).exclude(id__in=target_qs.values_list('id', flat=True)).count()
+        if remaining_superadmins == 0:
+            return Response(
+                {"error": "At least one superadmin must remain in the system."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+    matched_ids = list(target_qs.values_list('id', flat=True))
+    count = len(matched_ids)
+    if count == 0:
+        return Response({"message": "No matching users found to delete.", "deleted_count": 0, "deleted_ids": []}, status=status.HTTP_200_OK)
+
+    target_qs.delete()
+    return Response(
+        {
+            "message": f"Successfully deleted {count} user{'s' if count != 1 else ''}.",
+            "deleted_count": count,
+            "deleted_ids": matched_ids,
+        },
+        status=status.HTTP_200_OK,
+    )
+
