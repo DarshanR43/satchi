@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { NavLink, useLocation, useNavigate } from "react-router-dom";
+import { Link, NavLink, useLocation, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { useAuth } from "../context/AuthContext";
 
@@ -84,15 +84,27 @@ const Header = () => {
       className="fixed top-0 left-0 right-0 z-50 font-body"
     >
       <div
-        className={`w-[95%] max-w-7xl mx-auto mt-4 rounded-2xl px-6 py-3 transition-all duration-300 flex items-center justify-between ${headerContainerClasses}`}
+        className={`w-[95%] max-w-7xl mx-auto mt-4 rounded-2xl px-4 sm:px-6 py-3 transition-all duration-300 flex items-center justify-between ${headerContainerClasses}`}
       >
-        <a href="/">
+        <Link to="/" className="flex items-center gap-2 sm:gap-3 md:gap-4 flex-shrink-0">
           <img 
-            src="/images/gyan_main_logo.png" 
-            alt="GYAN Logo" 
-            className="h-8" 
+            src="/images/Amrita_Logo.png" 
+            alt="Amrita Vishwa Vidyapeetham" 
+            className="h-[24px] sm:h-[32px] md:h-[38px] lg:h-[44px] w-auto object-contain" 
           />
-        </a>
+          <div className="h-3.5 sm:h-5 md:h-6 lg:h-7 w-px bg-gray-300/80" />
+          <img 
+            src="/images/IIC_Logo.png" 
+            alt="Institution's Innovation Council" 
+            className="h-[24px] sm:h-[32px] md:h-[38px] lg:h-[44px] w-auto object-contain" 
+          />
+          <div className="h-3.5 sm:h-5 md:h-6 lg:h-7 w-px bg-gray-300/80" />
+          <img 
+            src="/images/GYAN_updated_logo_v2.png" 
+            alt="GYAN Logo" 
+            className="h-[28px] sm:h-[36px] md:h-[44px] lg:h-[48px] w-auto object-contain" 
+          />
+        </Link>
         
         <ul className="hidden lg:flex items-center gap-2 text-sm font-semibold">
           {menuItems.map((item) => (

@@ -4,17 +4,22 @@ import axios from "axios";
 import { AnimatePresence, motion } from "framer-motion";
 import {
   AlertCircle,
+  AlertTriangle,
   ArrowLeft,
+  CheckSquare,
   Edit3,
+  Filter,
   KeyRound,
   Mail,
   Phone,
   Save,
   Search,
   ShieldCheck,
+  Square,
   Trash2,
   UserPlus,
   Users,
+  UserX,
   X,
 } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
@@ -106,6 +111,12 @@ const UserManagementPage = () => {
   const [error, setError] = useState(null);
   const [successMessage, setSuccessMessage] = useState(null);
 
+  // Bulk selection & mass delete states
+  const [selectedUserIds, setSelectedUserIds] = useState([]);
+  const [roleFilter, setRoleFilter] = useState("ALL");
+  const [massDeleteModal, setMassDeleteModal] = useState(null); // { mode: 'selected' | 'all_participants', count: number, userIds?: number[] }
+  const [massDeleting, setMassDeleting] = useState(false);
+
   const hasAccess = Boolean(user && (user.role === "SUPERADMIN" || user.is_superuser));
 
   const api = useMemo(() => {
@@ -124,6 +135,11 @@ const UserManagementPage = () => {
     [users],
   );
 
+  const participantsCount = useMemo(
+    () => users.filter((managedUser) => managedUser.role === "PARTICIPANT" && managedUser.id !== user?.id).length,
+    [users, user?.id],
+  );
+
   const loadUsers = async () => {
     setLoading(true);
     setError(null);
@@ -133,6 +149,7 @@ const UserManagementPage = () => {
       setUsers(loadedUsers);
       setAvailableRoles(response.data.available_roles || []);
       setDraftRoles(Object.fromEntries(loadedUsers.map((loadedUser) => [loadedUser.id, loadedUser.role])));
+      setSelectedUserIds([]);
     } catch (requestError) {
       setError(requestError.response?.data?.error || "Failed to load users.");
     } finally {
@@ -150,18 +167,62 @@ const UserManagementPage = () => {
 
   const filteredUsers = useMemo(() => {
     const query = search.trim().toLowerCase();
-    if (!query) {
-      return users;
-    }
 
     return users.filter((listedUser) => {
+      if (roleFilter !== "ALL" && listedUser.role !== roleFilter) {
+        return false;
+      }
+      if (!query) {
+        return true;
+      }
       const haystack = [listedUser.full_name, listedUser.email, listedUser.phone, listedUser.role]
         .filter(Boolean)
         .join(" ")
         .toLowerCase();
       return haystack.includes(query);
     });
-  }, [users, search]);
+  }, [users, search, roleFilter]);
+
+  // Selectable users in current filter view (excluding active user & lone superadmin)
+  const selectableUsers = useMemo(() => {
+    return filteredUsers.filter((u) => {
+      const isSelf = u.id === user?.id;
+      const isLastSuperAdmin = u.role === "SUPERADMIN" && superadminCount === 1;
+      return !isSelf && !isLastSuperAdmin;
+    });
+  }, [filteredUsers, user?.id, superadminCount]);
+
+  const allFilteredSelected = useMemo(() => {
+    if (selectableUsers.length === 0) return false;
+    return selectableUsers.every((u) => selectedUserIds.includes(u.id));
+  }, [selectableUsers, selectedUserIds]);
+
+  const toggleSelectAllFiltered = () => {
+    if (allFilteredSelected) {
+      const selectableIdSet = new Set(selectableUsers.map((u) => u.id));
+      setSelectedUserIds((prev) => prev.filter((id) => !selectableIdSet.has(id)));
+    } else {
+      const newIds = new Set([...selectedUserIds, ...selectableUsers.map((u) => u.id)]);
+      setSelectedUserIds(Array.from(newIds));
+    }
+  };
+
+  const toggleSelectUser = (targetId) => {
+    setSelectedUserIds((prev) =>
+      prev.includes(targetId) ? prev.filter((id) => id !== targetId) : [...prev, targetId],
+    );
+  };
+
+  const handleSelectAllParticipants = () => {
+    const participantIds = users
+      .filter((u) => u.role === "PARTICIPANT" && u.id !== user?.id)
+      .map((u) => u.id);
+    setSelectedUserIds(participantIds);
+  };
+
+  const handleClearSelection = () => {
+    setSelectedUserIds([]);
+  };
 
   const handleCreateUser = async (event) => {
     event.preventDefault();
@@ -254,6 +315,7 @@ const UserManagementPage = () => {
     try {
       const response = await api.delete(`/user/admin/users/${deletingUser.id}/`);
       setUsers((currentUsers) => currentUsers.filter((listedUser) => listedUser.id !== deletingUser.id));
+      setSelectedUserIds((prev) => prev.filter((id) => id !== deletingUser.id));
       setDraftRoles((currentDrafts) => {
         const nextDrafts = { ...currentDrafts };
         delete nextDrafts[deletingUser.id];
@@ -267,6 +329,40 @@ const UserManagementPage = () => {
       setDeletingSubmitting(false);
     }
   };
+
+  const handleConfirmMassDelete = async () => {
+    if (!massDeleteModal) return;
+
+    setMassDeleting(true);
+    setError(null);
+    setSuccessMessage(null);
+
+    try {
+      const payload =
+        massDeleteModal.mode === "all_participants"
+          ? { delete_all_role: "PARTICIPANT" }
+          : { user_ids: massDeleteModal.userIds };
+
+      const response = await api.post("/user/admin/users/bulk-delete/", payload);
+      const deletedIds = new Set(response.data.deleted_ids || []);
+
+      setUsers((currentUsers) => currentUsers.filter((u) => !deletedIds.has(u.id)));
+      setSelectedUserIds((prev) => prev.filter((id) => !deletedIds.has(id)));
+      setDraftRoles((currentDrafts) => {
+        const nextDrafts = { ...currentDrafts };
+        deletedIds.forEach((id) => delete nextDrafts[id]);
+        return nextDrafts;
+      });
+
+      setMassDeleteModal(null);
+      setSuccessMessage(response.data.message || "Users deleted successfully.");
+    } catch (requestError) {
+      setError(requestError.response?.data?.error || "Failed to bulk delete users.");
+    } finally {
+      setMassDeleting(false);
+    }
+  };
+
 
   if (!isAuthenticated) {
     return <Navigate to="/login" />;
@@ -371,22 +467,128 @@ const UserManagementPage = () => {
               transition={{ delay: 0.05 }}
               className="rounded-3xl border border-gray-200 bg-white/80 p-6 shadow-xl backdrop-blur-lg"
             >
-              <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                <div>
-                  <h2 className="text-xl font-bold text-gray-900">Existing Users</h2>
-                  <p className="text-sm text-gray-500">Quick-save roles, edit account details, or delete users.</p>
-                </div>
-                <div className="relative w-full sm:max-w-xs">
-                  <div className="absolute inset-y-0 left-0 flex items-center pl-4 text-gray-400">
-                    <Search size={18} />
+              <div className="mb-6 flex flex-col gap-4">
+                <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                  <div>
+                    <h2 className="text-xl font-bold text-gray-900">Existing Users</h2>
+                    <p className="text-sm text-gray-500">Quick-save roles, edit account details, or mass delete accounts.</p>
                   </div>
-                  <input
-                    type="search"
-                    placeholder="Search by name, email, phone, role"
-                    value={search}
-                    onChange={(event) => setSearch(event.target.value)}
-                    className="w-full rounded-2xl border border-gray-200 bg-gray-50 py-3 pl-11 pr-4 text-sm text-gray-800 outline-none transition focus:border-[#ff6a3c] focus:bg-white focus:ring-2 focus:ring-orange-100"
-                  />
+
+                  <div className="flex flex-col sm:flex-row gap-3 sm:items-center w-full sm:w-auto">
+                    {/* Role Filter */}
+                    <div className="relative min-w-[170px]">
+                      <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3.5 text-gray-400">
+                        <Filter size={16} />
+                      </div>
+                      <select
+                        value={roleFilter}
+                        onChange={(e) => {
+                          setRoleFilter(e.target.value);
+                          setSelectedUserIds([]);
+                        }}
+                        className="w-full rounded-2xl border border-gray-200 bg-gray-50 py-3 pl-10 pr-8 text-sm font-medium text-gray-800 outline-none transition focus:border-[#ff6a3c] focus:bg-white focus:ring-2 focus:ring-orange-100 cursor-pointer"
+                      >
+                        <option value="ALL">All Roles ({users.length})</option>
+                        {availableRoles.map((r) => {
+                          const count = users.filter((u) => u.role === r.value).length;
+                          return (
+                            <option key={r.value} value={r.value}>
+                              {r.label} ({count})
+                            </option>
+                          );
+                        })}
+                      </select>
+                    </div>
+
+                    {/* Search Input */}
+                    <div className="relative w-full sm:w-64">
+                      <div className="absolute inset-y-0 left-0 flex items-center pl-4 text-gray-400">
+                        <Search size={18} />
+                      </div>
+                      <input
+                        type="search"
+                        placeholder="Search users..."
+                        value={search}
+                        onChange={(event) => setSearch(event.target.value)}
+                        className="w-full rounded-2xl border border-gray-200 bg-gray-50 py-3 pl-11 pr-4 text-sm text-gray-800 outline-none transition focus:border-[#ff6a3c] focus:bg-white focus:ring-2 focus:ring-orange-100"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Bulk Actions Control Bar */}
+                <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-orange-200/70 bg-gradient-to-r from-orange-50/80 via-amber-50/60 to-orange-50/80 p-3.5">
+                  <div className="flex flex-wrap items-center gap-3">
+                    <button
+                      type="button"
+                      onClick={toggleSelectAllFiltered}
+                      disabled={selectableUsers.length === 0}
+                      className="inline-flex items-center gap-2 rounded-xl bg-white px-3 py-1.5 text-xs font-semibold text-gray-700 shadow-sm border border-gray-200 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition"
+                    >
+                      {allFilteredSelected ? <CheckSquare size={16} className="text-[#ff6a3c]" /> : <Square size={16} />}
+                      {allFilteredSelected ? "Deselect Filtered" : "Select Filtered"}
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={handleSelectAllParticipants}
+                      disabled={participantsCount === 0}
+                      className="inline-flex items-center gap-1.5 rounded-xl bg-white px-3 py-1.5 text-xs font-semibold text-gray-700 shadow-sm border border-gray-200 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition"
+                    >
+                      <Users size={14} className="text-[#df9400]" />
+                      Select All Participants ({participantsCount})
+                    </button>
+
+                    {selectedUserIds.length > 0 && (
+                      <button
+                        type="button"
+                        onClick={handleClearSelection}
+                        className="text-xs text-gray-500 hover:text-gray-800 underline underline-offset-2 ml-1"
+                      >
+                        Clear Selection ({selectedUserIds.length})
+                      </button>
+                    )}
+                  </div>
+
+                  <div className="flex flex-wrap items-center gap-2">
+                    {/* Mass Delete All Participants Quick Button */}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setMassDeleteModal({
+                          mode: "all_participants",
+                          count: participantsCount,
+                        });
+                        setError(null);
+                        setSuccessMessage(null);
+                      }}
+                      disabled={participantsCount === 0}
+                      className="inline-flex items-center gap-2 rounded-xl bg-red-500/10 px-3.5 py-2 text-xs font-bold text-red-700 border border-red-200 hover:bg-red-500 hover:text-white transition disabled:opacity-40 disabled:cursor-not-allowed"
+                    >
+                      <UserX size={15} />
+                      Mass Delete All Participants ({participantsCount})
+                    </button>
+
+                    {/* Delete Selected Button */}
+                    {selectedUserIds.length > 0 && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setMassDeleteModal({
+                            mode: "selected",
+                            count: selectedUserIds.length,
+                            userIds: selectedUserIds,
+                          });
+                          setError(null);
+                          setSuccessMessage(null);
+                        }}
+                        className="inline-flex items-center gap-2 rounded-xl bg-red-600 px-4 py-2 text-xs font-bold text-white shadow-md shadow-red-600/20 hover:bg-red-700 active:scale-95 transition"
+                      >
+                        <Trash2 size={15} />
+                        Delete Selected ({selectedUserIds.length})
+                      </button>
+                    )}
+                  </div>
                 </div>
               </div>
 
@@ -403,27 +605,55 @@ const UserManagementPage = () => {
                   {filteredUsers.map((listedUser) => {
                     const selectedRole = draftRoles[listedUser.id] || listedUser.role;
                     const isDirty = selectedRole !== listedUser.role;
-                    const deleteBlocked =
-                      listedUser.id === user?.id ||
-                      (listedUser.role === "SUPERADMIN" && superadminCount === 1);
+                    const isSelf = listedUser.id === user?.id;
+                    const isLastSuperAdmin = listedUser.role === "SUPERADMIN" && superadminCount === 1;
+                    const deleteBlocked = isSelf || isLastSuperAdmin;
+                    const isChecked = selectedUserIds.includes(listedUser.id);
 
                     return (
-                      <div key={listedUser.id} className="rounded-3xl border border-gray-200 bg-white/80 p-5 shadow-sm transition hover:border-orange-200">
+                      <div
+                        key={listedUser.id}
+                        className={`rounded-3xl border p-5 shadow-sm transition ${
+                          isChecked
+                            ? "border-orange-300 bg-orange-50/30 ring-2 ring-orange-200"
+                            : "border-gray-200 bg-white/80 hover:border-orange-200"
+                        }`}
+                      >
                         <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-                          <div className="min-w-0">
-                            <div className="flex flex-wrap items-center gap-2">
-                              <h3 className="truncate text-lg font-bold text-gray-900">{listedUser.full_name || listedUser.email}</h3>
-                              <RoleBadge role={listedUser.role} />
-                              {listedUser.is_superuser ? (
-                                <span className="inline-flex rounded-full bg-red-50 px-2.5 py-1 text-xs font-semibold text-red-700">
-                                  Django Admin
-                                </span>
-                              ) : null}
+                          <div className="flex items-start gap-3.5 min-w-0">
+                            {/* Row Checkbox */}
+                            <div className="pt-1">
+                              <input
+                                type="checkbox"
+                                checked={isChecked}
+                                onChange={() => toggleSelectUser(listedUser.id)}
+                                disabled={deleteBlocked}
+                                title={
+                                  isSelf
+                                    ? "Cannot select your own logged in account"
+                                    : isLastSuperAdmin
+                                    ? "Cannot select the only remaining superadmin"
+                                    : "Select for mass deletion"
+                                }
+                                className="h-5 w-5 rounded-lg border-gray-300 text-[#ff6a3c] focus:ring-orange-200 cursor-pointer disabled:cursor-not-allowed disabled:opacity-40"
+                              />
                             </div>
-                            <div className="mt-2 flex flex-col gap-1 text-sm text-gray-500">
-                              <span>{listedUser.email}</span>
-                              {listedUser.phone ? <span>{listedUser.phone}</span> : null}
-                              <span>Username: {listedUser.username}</span>
+
+                            <div className="min-w-0">
+                              <div className="flex flex-wrap items-center gap-2">
+                                <h3 className="truncate text-lg font-bold text-gray-900">{listedUser.full_name || listedUser.email}</h3>
+                                <RoleBadge role={listedUser.role} />
+                                {listedUser.is_superuser ? (
+                                  <span className="inline-flex rounded-full bg-red-50 px-2.5 py-1 text-xs font-semibold text-red-700">
+                                    Django Admin
+                                  </span>
+                                ) : null}
+                              </div>
+                              <div className="mt-2 flex flex-col gap-1 text-sm text-gray-500">
+                                <span>{listedUser.email}</span>
+                                {listedUser.phone ? <span>{listedUser.phone}</span> : null}
+                                <span>Username: {listedUser.username}</span>
+                              </div>
                             </div>
                           </div>
 
@@ -485,6 +715,83 @@ const UserManagementPage = () => {
           </div>
         </div>
       </div>
+
+      <AnimatePresence>
+        {/* Mass Delete Confirmation Modal */}
+        {massDeleteModal ? (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 bg-gray-900/60 p-4 backdrop-blur-sm"
+          >
+            <div className="flex min-h-full items-center justify-center">
+              <motion.div
+                initial={{ scale: 0.92, y: 20 }}
+                animate={{ scale: 1, y: 0 }}
+                exit={{ scale: 0.96, y: 10 }}
+                className="w-full max-w-lg rounded-3xl bg-white p-6 shadow-2xl"
+              >
+                <div className="mb-4 flex items-start gap-3">
+                  <div className="rounded-2xl bg-red-100 p-3 text-red-600">
+                    <AlertTriangle size={24} />
+                  </div>
+                  <div>
+                    <h2 className="text-xl font-bold text-gray-900">
+                      {massDeleteModal.mode === "all_participants"
+                        ? "Mass Delete All Participants?"
+                        : "Mass Delete Selected Users?"}
+                    </h2>
+                    <p className="mt-1 text-sm text-gray-500">
+                      This will permanently remove the accounts, login credentials, and event permissions.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="rounded-2xl border border-red-200 bg-red-50/80 p-4 text-sm text-red-800 space-y-2">
+                  <div className="font-bold flex items-center justify-between">
+                    <span>Total accounts to be deleted:</span>
+                    <span className="text-base px-2.5 py-0.5 rounded-full bg-red-200 text-red-900 font-extrabold">
+                      {massDeleteModal.count}
+                    </span>
+                  </div>
+                  {massDeleteModal.mode === "all_participants" ? (
+                    <p className="text-xs text-red-700 leading-relaxed">
+                      Every user account with the role <strong>Participant</strong> (excluding your logged-in account) will be permanently deleted.
+                    </p>
+                  ) : (
+                    <p className="text-xs text-red-700 leading-relaxed">
+                      All {massDeleteModal.count} selected user accounts will be permanently deleted from the database.
+                    </p>
+                  )}
+                  <p className="text-xs text-red-600 font-semibold pt-1">
+                    ⚠️ This action cannot be undone.
+                  </p>
+                </div>
+
+                <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+                  <button
+                    type="button"
+                    onClick={() => !massDeleting && setMassDeleteModal(null)}
+                    className="rounded-2xl bg-gray-200 px-5 py-3 text-sm font-semibold text-gray-700 transition hover:bg-gray-300"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleConfirmMassDelete}
+                    disabled={massDeleting || massDeleteModal.count === 0}
+                    className="inline-flex items-center justify-center gap-2 rounded-2xl bg-red-600 px-5 py-3 text-sm font-bold text-white shadow-lg shadow-red-600/30 transition hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    <Trash2 size={16} />
+                    {massDeleting ? "Deleting Users..." : `Permanently Delete ${massDeleteModal.count} User${massDeleteModal.count !== 1 ? 's' : ''}`}
+                  </button>
+                </div>
+              </motion.div>
+            </div>
+          </motion.div>
+        ) : null}
+      </AnimatePresence>
 
       <AnimatePresence>
         {editingUser ? (

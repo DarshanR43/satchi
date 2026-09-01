@@ -642,8 +642,11 @@ const AdminPage = () => {
             </div>
             {user?.role === 'SUPERADMIN' && (
               <div className="flex w-full flex-col gap-3 sm:w-auto sm:flex-row">
-                <Link to="/admin/users" className="w-full sm:w-auto flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-gray-900 text-white font-bold text-sm shadow-md shadow-gray-900/10 hover:bg-gray-800 transition-all active:scale-95">
-                  <Users size={18} /> Manage Users
+                <Link
+                  to="/admin/users"
+                  className="w-full sm:w-auto flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-gray-900 text-white font-bold text-sm shadow-md shadow-gray-900/10 hover:bg-gray-800 transition-all active:scale-95"
+                >
+                  <Users size={18} /> Manage & Mass Delete Users
                 </Link>
                 <button onClick={() => openCreateModal()} className="w-full sm:w-auto flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-[#ff6a3c] text-white font-bold text-sm shadow-md shadow-orange-500/20 hover:shadow-lg hover:shadow-orange-500/40 transition-all active:scale-95">
                   <Plus size={18} /> Create Event
