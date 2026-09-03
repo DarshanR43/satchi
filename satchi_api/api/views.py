@@ -143,16 +143,36 @@ def _user_can_manage_event(user, event):
     if not user or not user.is_authenticated:
         return False
 
-    if user.is_superuser or user.role == User.Role.SUPERADMIN:
+    if user.is_superuser or user.is_staff or getattr(user, "role", None) in [User.Role.SUPERADMIN, "SUPERADMIN"]:
         return True
+
+    allowed_main_roles = [
+        User.Role.SUPERADMIN,
+        User.Role.EVENTADMIN,
+        User.Role.EVENTMANAGER,
+    ]
+    allowed_sub_roles = [
+        User.Role.SUPERADMIN,
+        User.Role.EVENTADMIN,
+        User.Role.EVENTMANAGER,
+        User.Role.SUBEVENTADMIN,
+        User.Role.SUBEVENTMANAGER,
+    ]
+    allowed_subsub_roles = [
+        User.Role.SUPERADMIN,
+        User.Role.EVENTADMIN,
+        User.Role.EVENTMANAGER,
+        User.Role.SUBEVENTADMIN,
+        User.Role.SUBEVENTMANAGER,
+        User.Role.SUBSUBEVENTMANAGER,
+    ]
 
     return EventUserMapping.objects.filter(
         user=user,
-        user_role__in=MANAGE_ROLES,
     ).filter(
-        Q(main_event=event.parent_event)
-        | Q(sub_event=event.parent_subevent)
-        | Q(sub_sub_event=event)
+        Q(main_event=event.parent_event, user_role__in=allowed_main_roles)
+        | Q(sub_event=event.parent_subevent, user_role__in=allowed_sub_roles)
+        | Q(sub_sub_event=event, user_role__in=allowed_subsub_roles)
     ).exists()
 
 
@@ -565,7 +585,10 @@ def user_registrations(request):
 def get_event_statistics(request, event_id):
     event = get_object_or_404(SubSubEvent, event_id=event_id)
     if not _user_can_manage_event(request.user, event):
-        return Response({"error": "Unauthorized Access"}, status=status.HTTP_403_FORBIDDEN)
+        return Response(
+            {"error": "Unauthorized Access: Only the assigned Event Admin, Sub Event Manager, or Sub Sub Event Manager can view grades and statistics for this event."},
+            status=status.HTTP_403_FORBIDDEN,
+        )
 
     projects = (
         Project.objects.filter(event=event)
