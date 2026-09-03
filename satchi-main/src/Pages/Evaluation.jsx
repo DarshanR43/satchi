@@ -1,11 +1,12 @@
 "use client";
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Send, BarChart2, Cpu, Loader, Users, X, CheckCircle, 
   ChevronDown, Search, Download, Award, AlertCircle, 
-  Layout, Trophy, Gavel, ArrowRight, CheckCircle2, ArrowLeft 
+  Layout, Trophy, Gavel, ArrowRight, CheckCircle2, ArrowLeft,
+  Filter
 } from 'lucide-react';
 import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
@@ -103,6 +104,7 @@ const EvaluationPage = () => {
     const [selectedProject, setSelectedProject] = useState(''); 
     const [selectedProjectName, setSelectedProjectName] = useState('');
     const [projectSearchTerm, setProjectSearchTerm] = useState('');
+    const [evaluationFilter, setEvaluationFilter] = useState('ALL'); // 'ALL' | 'EVALUATED' | 'NOT_EVALUATED'
     
     // Evaluation Form State
     const [scores, setScores] = useState({});
@@ -159,6 +161,8 @@ const EvaluationPage = () => {
             const fetchData = async () => {
                 setLoading(prev => ({ ...prev, projects: true, judges: true }));
                 setProjects([]); setJudges([]); setRubrics([]); setSelectedProject('');
+                setProjectSearchTerm('');
+                setEvaluationFilter('ALL');
                 try {
                     const [projectsRes, judgesRes] = await Promise.all([
                         axios.get(`${API_URL}/eval/get_projects/${selectedSubSubEvent}/`),
@@ -306,12 +310,27 @@ const EvaluationPage = () => {
         }
     };
 
-    const filteredProjects = projects.filter(p => 
-        p.team_name.toLowerCase().includes(projectSearchTerm.toLowerCase()) ||
-        (p.project_category || '').toLowerCase().includes(projectSearchTerm.toLowerCase()) ||
-        getProjectCategoryLabel(p.project_category).toLowerCase().includes(projectSearchTerm.toLowerCase()) ||
-        String(p.project_id ?? p.id).includes(projectSearchTerm)
-    );
+    const evaluatedCount = useMemo(() => projects.filter(p => Boolean(p.has_evaluation)).length, [projects]);
+    const notEvaluatedCount = useMemo(() => projects.filter(p => !Boolean(p.has_evaluation)).length, [projects]);
+
+    const filteredProjects = useMemo(() => {
+        return projects.filter(p => {
+            const matchesSearch = 
+                p.team_name.toLowerCase().includes(projectSearchTerm.toLowerCase()) ||
+                (p.project_category || '').toLowerCase().includes(projectSearchTerm.toLowerCase()) ||
+                getProjectCategoryLabel(p.project_category).toLowerCase().includes(projectSearchTerm.toLowerCase()) ||
+                String(p.project_id ?? p.id).includes(projectSearchTerm);
+
+            const isEvaluated = Boolean(p.has_evaluation);
+            const matchesStatus = 
+                evaluationFilter === 'ALL' ||
+                (evaluationFilter === 'EVALUATED' && isEvaluated) ||
+                (evaluationFilter === 'NOT_EVALUATED' && !isEvaluated);
+
+            return matchesSearch && matchesStatus;
+        });
+    }, [projects, projectSearchTerm, evaluationFilter]);
+
     const selectedProjectRecord = projects.find(p => String(p.project_id ?? p.id) === selectedProject);
 
     const handleDownloadSummary = async () => {
@@ -376,7 +395,7 @@ const EvaluationPage = () => {
                         <div className="flex-1 flex flex-col overflow-hidden">
                             {selectedSubSubEvent ? (
                                 <>
-                                    <div className="p-4 border-b border-gray-100 bg-white/30">
+                                    <div className="p-4 border-b border-gray-100 bg-white/30 space-y-3">
                                         <div className="relative">
                                             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
                                             <input 
@@ -387,8 +406,65 @@ const EvaluationPage = () => {
                                                 className="w-full pl-9 pr-4 py-2 rounded-xl bg-gray-50 border border-transparent focus:bg-white focus:border-orange-200 focus:ring-2 focus:ring-orange-100 transition-all text-sm outline-none"
                                             />
                                         </div>
-                                        <div className="flex items-center justify-between mt-3 px-1">
-                                            <span className="text-xs font-bold text-gray-400 uppercase tracking-wider">{filteredProjects.length} Teams</span>
+
+                                        {/* Evaluation Status Filter */}
+                                        <div className="grid grid-cols-3 gap-1 p-1 bg-gray-100/90 rounded-xl text-xs font-bold select-none">
+                                            <button
+                                                type="button"
+                                                onClick={() => setEvaluationFilter('ALL')}
+                                                className={`py-1.5 px-1 rounded-lg transition-all flex items-center justify-center gap-1.5 ${
+                                                    evaluationFilter === 'ALL'
+                                                        ? 'bg-white text-gray-900 shadow-sm'
+                                                        : 'text-gray-500 hover:text-gray-900'
+                                                }`}
+                                            >
+                                                <span>All</span>
+                                                <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-bold ${
+                                                    evaluationFilter === 'ALL' ? 'bg-gray-200 text-gray-800' : 'bg-gray-200/60 text-gray-500'
+                                                }`}>
+                                                    {projects.length}
+                                                </span>
+                                            </button>
+                                            <button
+                                                type="button"
+                                                onClick={() => setEvaluationFilter('EVALUATED')}
+                                                className={`py-1.5 px-1 rounded-lg transition-all flex items-center justify-center gap-1.5 ${
+                                                    evaluationFilter === 'EVALUATED'
+                                                        ? 'bg-white text-green-700 shadow-sm'
+                                                        : 'text-gray-500 hover:text-green-700'
+                                                }`}
+                                                title="Evaluated Teams"
+                                            >
+                                                <span className="truncate">Evaluated</span>
+                                                <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-bold ${
+                                                    evaluationFilter === 'EVALUATED' ? 'bg-green-100 text-green-700' : 'bg-gray-200/60 text-gray-500'
+                                                }`}>
+                                                    {evaluatedCount}
+                                                </span>
+                                            </button>
+                                            <button
+                                                type="button"
+                                                onClick={() => setEvaluationFilter('NOT_EVALUATED')}
+                                                className={`py-1.5 px-1 rounded-lg transition-all flex items-center justify-center gap-1.5 ${
+                                                    evaluationFilter === 'NOT_EVALUATED'
+                                                        ? 'bg-white text-orange-600 shadow-sm'
+                                                        : 'text-gray-500 hover:text-orange-600'
+                                                }`}
+                                                title="Not Evaluated Teams"
+                                            >
+                                                <span className="truncate">Pending</span>
+                                                <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-bold ${
+                                                    evaluationFilter === 'NOT_EVALUATED' ? 'bg-orange-100 text-orange-700' : 'bg-gray-200/60 text-gray-500'
+                                                }`}>
+                                                    {notEvaluatedCount}
+                                                </span>
+                                            </button>
+                                        </div>
+
+                                        <div className="flex items-center justify-between px-1">
+                                            <span className="text-xs font-bold text-gray-400 uppercase tracking-wider">
+                                                {filteredProjects.length} {filteredProjects.length === 1 ? 'Team' : 'Teams'}
+                                            </span>
                                             {loading.projects ? <Loader size={14} className="animate-spin text-[#ff6a3c]" /> : (
                                                 <button onClick={handleDownloadSummary} className="text-xs font-bold text-[#ff6a3c] hover:underline flex items-center gap-1">
                                                     <Download size={12} /> CSV
@@ -434,7 +510,27 @@ const EvaluationPage = () => {
                                                 );
                                             })
                                         ) : (
-                                            <div className="text-center py-10 text-gray-400 text-sm">No teams found.</div>
+                                            <div className="text-center py-10 px-4 text-gray-400 text-sm flex flex-col items-center gap-2">
+                                                <Filter size={24} className="opacity-30" />
+                                                <p>
+                                                    {projects.length === 0 
+                                                        ? "No teams found for this competition." 
+                                                        : evaluationFilter === 'EVALUATED' 
+                                                            ? "No evaluated teams found." 
+                                                            : evaluationFilter === 'NOT_EVALUATED' 
+                                                                ? "No pending teams remaining." 
+                                                                : "No matching teams found."}
+                                                </p>
+                                                {(projectSearchTerm || evaluationFilter !== 'ALL') && projects.length > 0 && (
+                                                    <button 
+                                                        type="button"
+                                                        onClick={() => { setProjectSearchTerm(''); setEvaluationFilter('ALL'); }}
+                                                        className="text-xs font-bold text-[#ff6a3c] hover:underline mt-1"
+                                                    >
+                                                        Clear filters
+                                                    </button>
+                                                )}
+                                            </div>
                                         )}
                                     </div>
                                 </>

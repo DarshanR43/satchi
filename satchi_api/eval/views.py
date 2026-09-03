@@ -1,18 +1,18 @@
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.response import Response
 from rest_framework import status
+from rest_framework.permissions import IsAuthenticated
 
 from events.models import MainEvent, SubEvent, SubSubEvent
-from users.models import User
+from users.models import User, EventUserMapping
 from api.models import Project
 from api.serializers import ProjectSerializer
 from eval.models import Evaluation
 
 from django.db import transaction, IntegrityError
-from django.db.models import Exists, OuterRef
+from django.db.models import Exists, OuterRef, Q
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404
-from rest_framework.permissions import IsAuthenticatedOrReadOnly
 from decimal import Decimal
 import csv
 from io import StringIO
@@ -26,67 +26,163 @@ from .serializers import (
     CreateEvaluationSerializer,
 )
 
-@api_view(['POST'])
+GRADE_VIEW_ROLES = {
+    User.Role.SUPERADMIN,
+    User.Role.EVENTADMIN,
+    User.Role.EVENTMANAGER,
+    User.Role.SUBEVENTADMIN,
+    User.Role.SUBEVENTMANAGER,
+    User.Role.SUBSUBEVENTMANAGER,
+}
+
+
+def _user_can_view_grades_for_event(user, event):
+    if not user or not user.is_authenticated:
+        return False
+
+    if user.is_superuser or user.is_staff or getattr(user, "role", None) in [User.Role.SUPERADMIN, "SUPERADMIN"]:
+        return True
+
+    allowed_main_roles = [
+        User.Role.SUPERADMIN,
+        User.Role.EVENTADMIN,
+        User.Role.EVENTMANAGER,
+    ]
+    allowed_sub_roles = [
+        User.Role.SUPERADMIN,
+        User.Role.EVENTADMIN,
+        User.Role.EVENTMANAGER,
+        User.Role.SUBEVENTADMIN,
+        User.Role.SUBEVENTMANAGER,
+    ]
+    allowed_subsub_roles = [
+        User.Role.SUPERADMIN,
+        User.Role.EVENTADMIN,
+        User.Role.EVENTMANAGER,
+        User.Role.SUBEVENTADMIN,
+        User.Role.SUBEVENTMANAGER,
+        User.Role.SUBSUBEVENTMANAGER,
+    ]
+
+    return EventUserMapping.objects.filter(
+        user=user,
+    ).filter(
+        Q(main_event=event.parent_event, user_role__in=allowed_main_roles)
+        | Q(sub_event=event.parent_subevent, user_role__in=allowed_sub_roles)
+        | Q(sub_sub_event=event, user_role__in=allowed_subsub_roles)
+    ).exists()
+
+
+@api_view(['POST', 'GET'])
+@permission_classes([IsAuthenticated])
 def get_main_events(request):
-    if request.method == 'POST':
-        main_events = MainEvent.objects.all()
-        event_list = []
-        for event in main_events:
-            event_list.append({
-                'id': event.id,
-                'name': event.name,
-                'description': event.description
-            })
-        return Response(event_list, status=status.HTTP_200_OK)
+    user = request.user
+    if user.is_superuser or user.is_staff or getattr(user, "role", None) in [User.Role.SUPERADMIN, "SUPERADMIN"]:
+        main_events = MainEvent.objects.all().order_by("name")
+    else:
+        accessible_main_ids = set()
+        for mapping in EventUserMapping.objects.filter(user=user, user_role__in=GRADE_VIEW_ROLES).select_related("sub_event", "sub_sub_event"):
+            if mapping.main_event_id:
+                accessible_main_ids.add(mapping.main_event_id)
+            if mapping.sub_event_id and mapping.sub_event:
+                accessible_main_ids.add(mapping.sub_event.parent_event_id)
+            if mapping.sub_sub_event_id and mapping.sub_sub_event:
+                accessible_main_ids.add(mapping.sub_sub_event.parent_event_id)
+        main_events = MainEvent.objects.filter(id__in=accessible_main_ids).order_by("name")
 
-@api_view(['POST'])
+    event_list = [{'id': event.id, 'name': event.name, 'description': event.description} for event in main_events]
+    return Response(event_list, status=status.HTTP_200_OK)
+
+
+@api_view(['POST', 'GET'])
+@permission_classes([IsAuthenticated])
 def get_subevents(request, main_event_id):
-    if request.method == 'POST':
-        try:
-            main_event = MainEvent.objects.get(id=main_event_id)
-        except MainEvent.DoesNotExist:
-            return Response({"error": "Main event not found."}, status=status.HTTP_404_NOT_FOUND)
+    try:
+        main_event = MainEvent.objects.get(id=main_event_id)
+    except MainEvent.DoesNotExist:
+        return Response({"error": "Main event not found."}, status=status.HTTP_404_NOT_FOUND)
 
-        subevents = SubEvent.objects.filter(parent_event=main_event)
-        subevent_list = []
-        for subevent in subevents:
-            subevent_list.append({
-                'id': subevent.id,
-                'name': subevent.name,
-                'description': subevent.description
-            })
-        return Response(subevent_list, status=status.HTTP_200_OK)
+    user = request.user
+    if user.is_superuser or user.is_staff or getattr(user, "role", None) in [User.Role.SUPERADMIN, "SUPERADMIN"]:
+        subevents = SubEvent.objects.filter(parent_event=main_event).order_by("name")
+    else:
+        is_main_admin = EventUserMapping.objects.filter(
+            user=user,
+            main_event=main_event,
+            user_role__in=[User.Role.SUPERADMIN, User.Role.EVENTADMIN, User.Role.EVENTMANAGER],
+        ).exists()
+        if is_main_admin:
+            subevents = SubEvent.objects.filter(parent_event=main_event).order_by("name")
+        else:
+            accessible_sub_ids = set()
+            for mapping in EventUserMapping.objects.filter(user=user, user_role__in=GRADE_VIEW_ROLES).select_related("sub_event", "sub_sub_event"):
+                if mapping.sub_event_id and mapping.sub_event and mapping.sub_event.parent_event_id == main_event.id:
+                    accessible_sub_ids.add(mapping.sub_event_id)
+                if mapping.sub_sub_event_id and mapping.sub_sub_event and mapping.sub_sub_event.parent_event_id == main_event.id:
+                    accessible_sub_ids.add(mapping.sub_sub_event.parent_subevent_id)
+            subevents = SubEvent.objects.filter(id__in=accessible_sub_ids, parent_event=main_event).order_by("name")
 
-@api_view(['POST'])
+    subevent_list = [{'id': subevent.id, 'name': subevent.name, 'description': subevent.description} for subevent in subevents]
+    return Response(subevent_list, status=status.HTTP_200_OK)
+
+
+@api_view(['POST', 'GET'])
+@permission_classes([IsAuthenticated])
 def get_subsubevents(request, sub_event_id):
-    if request.method == 'POST':
-        try:
-            sub_event = SubEvent.objects.get(id=sub_event_id)
-        except SubEvent.DoesNotExist:
-            return Response({"error": "Sub event not found."}, status=status.HTTP_404_NOT_FOUND)
+    try:
+        sub_event = SubEvent.objects.get(id=sub_event_id)
+    except SubEvent.DoesNotExist:
+        return Response({"error": "Sub event not found."}, status=status.HTTP_404_NOT_FOUND)
 
-        subsubevents = SubSubEvent.objects.filter(parent_subevent=sub_event)
-        subsubevent_list = []
-        for subsubevent in subsubevents:
-            subsubevent_list.append({
-                'id': subsubevent.id,
-                'name': subsubevent.name,
-                'description': subsubevent.description,
-                'rules': subsubevent.rules,
-                'minTeamSize': subsubevent.minTeamSize,
-                'maxTeamSize': subsubevent.maxTeamSize,
-                'minFemaleParticipants': subsubevent.minFemaleParticipants,
-                'isFacultyMentorRequired': subsubevent.isFacultyMentorRequired,
-                'event_id': subsubevent.event_id
-            })
-        return Response(subsubevent_list, status=status.HTTP_200_OK)
+    user = request.user
+    if user.is_superuser or user.is_staff or getattr(user, "role", None) in [User.Role.SUPERADMIN, "SUPERADMIN"]:
+        subsubevents = SubSubEvent.objects.filter(parent_subevent=sub_event).order_by("name")
+    else:
+        is_parent_admin = EventUserMapping.objects.filter(
+            user=user,
+        ).filter(
+            Q(main_event=sub_event.parent_event, user_role__in=[User.Role.SUPERADMIN, User.Role.EVENTADMIN, User.Role.EVENTMANAGER])
+            | Q(sub_event=sub_event, user_role__in=[User.Role.SUPERADMIN, User.Role.EVENTADMIN, User.Role.EVENTMANAGER, User.Role.SUBEVENTADMIN, User.Role.SUBEVENTMANAGER])
+        ).exists()
+        if is_parent_admin:
+            subsubevents = SubSubEvent.objects.filter(parent_subevent=sub_event).order_by("name")
+        else:
+            accessible_subsub_ids = EventUserMapping.objects.filter(
+                user=user,
+                sub_sub_event__parent_subevent=sub_event,
+                user_role__in=GRADE_VIEW_ROLES,
+            ).values_list("sub_sub_event_id", flat=True)
+            subsubevents = SubSubEvent.objects.filter(id__in=accessible_subsub_ids, parent_subevent=sub_event).order_by("name")
+
+    subsubevent_list = []
+    for subsubevent in subsubevents:
+        subsubevent_list.append({
+            'id': subsubevent.id,
+            'name': subsubevent.name,
+            'description': subsubevent.description,
+            'rules': subsubevent.rules,
+            'minTeamSize': subsubevent.minTeamSize,
+            'maxTeamSize': subsubevent.maxTeamSize,
+            'minFemaleParticipants': subsubevent.minFemaleParticipants,
+            'isFacultyMentorRequired': subsubevent.isFacultyMentorRequired,
+            'event_id': subsubevent.event_id
+        })
+    return Response(subsubevent_list, status=status.HTTP_200_OK)
+
 
 @api_view(['GET'])
+@permission_classes([IsAuthenticated])
 def getProjectsByEvent(request, event_id):
     try:
         subsubevent = SubSubEvent.objects.get(id=event_id)
     except SubSubEvent.DoesNotExist:
         return Response({"error": "Event not found."}, status=status.HTTP_400_BAD_REQUEST)
+
+    if not _user_can_view_grades_for_event(request.user, subsubevent):
+        return Response(
+            {"error": "Unauthorized Access: Only the assigned Event Admin, Sub Event Manager, or Sub Sub Event Manager can view projects and grades for this event."},
+            status=status.HTTP_403_FORBIDDEN
+        )
 
     projects = (
         Project.objects.filter(event=subsubevent)
@@ -106,7 +202,7 @@ def getProjectsByEvent(request, event_id):
 
 
 @api_view(["POST"])
-@permission_classes([IsAuthenticatedOrReadOnly])
+@permission_classes([IsAuthenticated])
 def link_judges_to_subsubevent(request):
     """
     POST payload:
@@ -122,6 +218,11 @@ def link_judges_to_subsubevent(request):
     data = serializer.validated_data
 
     subsub = get_object_or_404(SubSubEvent, id=data["subsubevent_id"])
+    if not _user_can_view_grades_for_event(request.user, subsub):
+        return Response(
+            {"error": "Unauthorized Access: Only the assigned Event Admin, Sub Event Manager, or Sub Sub Event Manager can manage judges for this event."},
+            status=status.HTTP_403_FORBIDDEN
+        )
 
     with transaction.atomic():
         if data.get("replace"):
@@ -166,13 +267,19 @@ def link_judges_to_subsubevent(request):
 
 
 @api_view(["GET"])
-@permission_classes([IsAuthenticatedOrReadOnly])
+@permission_classes([IsAuthenticated])
 def list_judges_for_subsubevent(request, subsubevent_id):
     """
     GET /api/subsubevents/<id>/judges/
     Returns list of judges and configured rubrics
     """
     subsub = get_object_or_404(SubSubEvent, id=subsubevent_id)
+    if not _user_can_view_grades_for_event(request.user, subsub):
+        return Response(
+            {"error": "Unauthorized Access: Only the assigned Event Admin, Sub Event Manager, or Sub Sub Event Manager can view judges for this event."},
+            status=status.HTTP_403_FORBIDDEN
+        )
+
     qs = SubSubEventJudge.objects.filter(subsubevent=subsub).order_by("order", "name")
     judges_data = [{"id": j.id, "name": j.name, "order": j.order} for j in qs]
     
@@ -188,20 +295,13 @@ def list_judges_for_subsubevent(request, subsubevent_id):
 
 import logging
 from decimal import Decimal, InvalidOperation
-
-from django.db import transaction
-from django.shortcuts import get_object_or_404
-from rest_framework.decorators import api_view, permission_classes
-from rest_framework.permissions import IsAuthenticatedOrReadOnly
-from rest_framework.response import Response
-from rest_framework import status
 from rest_framework.exceptions import ValidationError
 
 logger = logging.getLogger(__name__)
 
 
 @api_view(["GET"])
-@permission_classes([IsAuthenticatedOrReadOnly])
+@permission_classes([IsAuthenticated])
 def get_evaluation_submission(request):
     """Return an existing evaluation (if any) including judge marks."""
 
@@ -221,6 +321,13 @@ def get_evaluation_submission(request):
         return Response(
             {"error": "project_id and subsubevent_id must be integers."},
             status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    subsubevent = get_object_or_404(SubSubEvent, id=subsubevent_id)
+    if not _user_can_view_grades_for_event(request.user, subsubevent):
+        return Response(
+            {"error": "Unauthorized Access: Only the assigned Event Admin, Sub Event Manager, or Sub Sub Event Manager can view evaluation grades for this event."},
+            status=status.HTTP_403_FORBIDDEN
         )
 
     try:
@@ -262,11 +369,16 @@ def get_evaluation_submission(request):
 
 
 @api_view(["GET"])
-@permission_classes([IsAuthenticatedOrReadOnly])
+@permission_classes([IsAuthenticated])
 def download_evaluation_summary(request, subsubevent_id):
     """Generate CSV containing registrations (and evaluation scores if available)."""
 
     subsubevent = get_object_or_404(SubSubEvent, id=subsubevent_id)
+    if not _user_can_view_grades_for_event(request.user, subsubevent):
+        return Response(
+            {"error": "Unauthorized Access: Only the assigned Event Admin, Sub Event Manager, or Sub Sub Event Manager can download evaluation grades for this event."},
+            status=status.HTTP_403_FORBIDDEN
+        )
 
     projects = (
         Project.objects.filter(event=subsubevent)
@@ -388,7 +500,7 @@ def download_evaluation_summary(request, subsubevent_id):
     return response
 
 @api_view(["POST"])
-@permission_classes([IsAuthenticatedOrReadOnly])
+@permission_classes([IsAuthenticated])
 def submit_evaluation_marks(request):
     """
     Create an Evaluation and EvaluationJudgeMark rows.
@@ -457,6 +569,12 @@ def submit_evaluation_marks(request):
     except Exception as exc:
         logger.exception("Failed to get SubSubEvent with id=%s", data.get("subsubevent_id"))
         raise
+
+    if not _user_can_view_grades_for_event(request.user, subsub):
+        return Response(
+            {"error": "Unauthorized Access: Only the assigned Event Admin, Sub Event Manager, or Sub Sub Event Manager can submit evaluations for this event."},
+            status=status.HTTP_403_FORBIDDEN
+        )
 
     # ---- Atomic create/update and per-mark debug ----
     created_marks = []

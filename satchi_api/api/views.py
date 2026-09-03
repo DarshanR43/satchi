@@ -143,16 +143,36 @@ def _user_can_manage_event(user, event):
     if not user or not user.is_authenticated:
         return False
 
-    if user.is_superuser or user.role == User.Role.SUPERADMIN:
+    if user.is_superuser or user.is_staff or getattr(user, "role", None) in [User.Role.SUPERADMIN, "SUPERADMIN"]:
         return True
+
+    allowed_main_roles = [
+        User.Role.SUPERADMIN,
+        User.Role.EVENTADMIN,
+        User.Role.EVENTMANAGER,
+    ]
+    allowed_sub_roles = [
+        User.Role.SUPERADMIN,
+        User.Role.EVENTADMIN,
+        User.Role.EVENTMANAGER,
+        User.Role.SUBEVENTADMIN,
+        User.Role.SUBEVENTMANAGER,
+    ]
+    allowed_subsub_roles = [
+        User.Role.SUPERADMIN,
+        User.Role.EVENTADMIN,
+        User.Role.EVENTMANAGER,
+        User.Role.SUBEVENTADMIN,
+        User.Role.SUBEVENTMANAGER,
+        User.Role.SUBSUBEVENTMANAGER,
+    ]
 
     return EventUserMapping.objects.filter(
         user=user,
-        user_role__in=MANAGE_ROLES,
     ).filter(
-        Q(main_event=event.parent_event)
-        | Q(sub_event=event.parent_subevent)
-        | Q(sub_sub_event=event)
+        Q(main_event=event.parent_event, user_role__in=allowed_main_roles)
+        | Q(sub_event=event.parent_subevent, user_role__in=allowed_sub_roles)
+        | Q(sub_sub_event=event, user_role__in=allowed_subsub_roles)
     ).exists()
 
 
@@ -255,6 +275,25 @@ def _serialize_registration(project, viewer):
 
 def _statistics_project_payload(project, evaluation_map):
     evaluation = evaluation_map.get(project.id)
+    judge_marks_payload = []
+    if evaluation:
+        for jm in evaluation.judge_marks.all():
+            rubric_marks = []
+            try:
+                for rm in jm.rubric_marks.all():
+                    rubric_marks.append({
+                        "rubricName": rm.rubric.name if rm.rubric else "Rubric",
+                        "mark": float(rm.mark),
+                    })
+            except Exception:
+                pass
+            judge_marks_payload.append({
+                "judgeName": jm.judge_name,
+                "mark": float(jm.mark),
+                "comments": jm.comments or "",
+                "rubricMarks": rubric_marks,
+            })
+
     return {
         "projectId": project.id,
         "teamName": project.team_name,
@@ -272,6 +311,11 @@ def _statistics_project_payload(project, evaluation_map):
         "registeredAt": project.submitted_at.isoformat() if project.submitted_at else None,
         "isEvaluated": bool(evaluation),
         "finalScore": float(evaluation.final_score) if evaluation and evaluation.final_score is not None else None,
+        "totalScore": float(evaluation.total) if evaluation and evaluation.total is not None else None,
+        "isDisqualified": bool(evaluation.is_disqualified) if evaluation else False,
+        "remarks": evaluation.remarks if evaluation else None,
+        "numberOfJudges": evaluation.number_of_judges if evaluation else 0,
+        "judgeMarks": judge_marks_payload,
     }
 
 
@@ -446,7 +490,11 @@ def event_registrations(request, event_pk):
         .prefetch_related('members')
         .order_by('team_name', 'id')
     )
-    evaluations = Evaluation.objects.filter(subsubevent=event).select_related('project')
+    evaluations = (
+        Evaluation.objects.filter(subsubevent=event)
+        .select_related('project')
+        .prefetch_related('judge_marks__rubric_marks__rubric')
+    )
     evaluation_map = {evaluation.project_id: evaluation for evaluation in evaluations}
 
     return Response(
@@ -537,14 +585,21 @@ def user_registrations(request):
 def get_event_statistics(request, event_id):
     event = get_object_or_404(SubSubEvent, event_id=event_id)
     if not _user_can_manage_event(request.user, event):
-        return Response({"error": "Unauthorized Access"}, status=status.HTTP_403_FORBIDDEN)
+        return Response(
+            {"error": "Unauthorized Access: Only the assigned Event Admin, Sub Event Manager, or Sub Sub Event Manager can view grades and statistics for this event."},
+            status=status.HTTP_403_FORBIDDEN,
+        )
 
     projects = (
         Project.objects.filter(event=event)
         .prefetch_related('members')
         .order_by('team_name', 'id')
     )
-    evaluations = Evaluation.objects.filter(subsubevent=event).select_related('project')
+    evaluations = (
+        Evaluation.objects.filter(subsubevent=event)
+        .select_related('project')
+        .prefetch_related('judge_marks__rubric_marks__rubric')
+    )
     evaluation_map = {evaluation.project_id: evaluation for evaluation in evaluations}
 
     marks = [float(mark) for mark in evaluations.values_list('final_score', flat=True)]
